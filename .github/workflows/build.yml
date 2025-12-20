@@ -16,9 +16,11 @@ jobs:
     - name: Build with Buildozer
       uses: ArtemSBulgakov/buildozer-action@v1
       id: buildozer
+      env:
+        USER: buildozer
       with:
         command: buildozer android debug
-        buildozer_version: master
+        buildozer_version: stable
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
