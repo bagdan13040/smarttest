@@ -24,10 +24,19 @@ icon.filename = assets/icon.png
 orientation = portrait
 
 # (str) Supported Android API
-android.api = 31
+android.api = 33
+
+# (int) Minimum API your APK / AAB will support.
+android.minapi = 21
+
+# (int) Android SDK version to use
+android.sdk = 33
 
 # (str) Android NDK version
-android.ndk = 23b
+android.ndk = 25b
+
+# (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
+android.archs = arm64-v8a
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
@@ -40,6 +49,8 @@ android.entrypoint = org.kivy.android.PythonActivity
 
 # (str) The package Python version
 # (not needed when building with buildozer on newer toolchains)
+p4a.branch = master
+p4a.python_version = 3.10
 
 [buildozer]
 log_level = 2
