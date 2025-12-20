@@ -1,0 +1,4 @@
+# Используем совместимую доступную версию Kivy
+kivy==2.2.1
+# For optional Material UI components, uncomment:
+# kivymd==1.2.0
