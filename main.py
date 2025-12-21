@@ -5,24 +5,293 @@ from kivy.core.window import Window
 from kivy.properties import NumericProperty, StringProperty, ListProperty
 from kivy.uix.button import Button
 from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.graphics import Color, RoundedRectangle
 from kivy.clock import Clock
 import threading
+import random
+import json
+import os
+import uuid
 from llm import generate_quiz
 
 # Warm light background
 Window.clearcolor = (0.95, 0.93, 0.90, 1)
 Window.size = (360, 700)
 
+INTERESTING_FACTS = [
+    "Первый компьютерный баг был настоящим мотыльком, застрявшим в реле.",
+    "Сердце синего кита весит столько же, сколько автомобиль.",
+    "Мёд — единственный продукт, который никогда не портится. Его находили в гробницах фараонов.",
+    "Венера — единственная планета Солнечной системы, вращающаяся по часовой стрелке.",
+    "Осьминоги имеют три сердца и голубую кровь.",
+    "Бананы с ботанической точки зрения являются ягодами, а клубника — нет.",
+    "В теле человека достаточно железа, чтобы сделать гвоздь длиной 7 см.",
+    "Колибри — единственная птица, способная летать назад.",
+    "ДНК человека и банана совпадают на 50%.",
+    "Самая короткая война в истории длилась 38 минут (между Британией и Занзибаром).",
+    "В Австралии кроликов больше, чем людей в Китае.",
+    "Алмазы могут гореть, если их нагреть до 720-800 градусов Цельсия.",
+    "Вода в горячем состоянии замерзает быстрее, чем в холодном (эффект Мпембы).",
+    "У жирафа такой же длинный язык, что он может чистить им свои уши.",
+    "В космосе полная тишина, так как там нет воздуха для распространения звука.",
+    "Самое глубокое место на Земле — Марианская впадина (около 11 км).",
+    "Бамбук может расти со скоростью до 91 см в день.",
+    "В теле взрослого человека 206 костей, а у ребенка — около 300.",
+    "Самая большая пустыня в мире — Антарктическая (полярная пустыня).",
+    "Свет от Солнца доходит до Земли за 8 минут и 20 секунд.",
+    "Python назван в честь комедийной группы 'Монти Пайтон', а не змеи.",
+    "Первая веб-камера была создана, чтобы проверять кофейник в Кембридже.",
+    "Символ @ использовался еще в средние века для обозначения меры веса.",
+    "Самый популярный пароль в мире — '123456'. Не используйте его!",
+    "Первый домен .com был зарегистрирован 15 марта 1985 года (symbolics.com).",
+    "В 1956 году жесткий диск на 5 МБ весил около тонны.",
+    "Google обрабатывает более 3.5 миллиардов поисковых запросов в день.",
+    "Первая мышь была сделана из дерева.",
+    "Код запуска ядерных ракет США долгое время был '00000000'.",
+    "В среднем программист делает от 10 до 50 ошибок на каждые 1000 строк кода.",
+    "Linux используется на всех суперкомпьютерах из топ-500 мира.",
+    "Первая SMS была отправлена в 1992 году с текстом 'Merry Christmas'.",
+    "QWERTY-раскладка была создана, чтобы замедлить машинисток и избежать залипания клавиш.",
+    "В Японии есть роботы, которые могут готовить суши.",
+    "Первый логотип Apple изображал Исаака Ньютона под яблоней.",
+    "Wi-Fi не имеет расшифровки, это просто маркетинговое название.",
+    "Каждую минуту на YouTube загружается более 500 часов видео.",
+    "Первый твит был опубликован Джеком Дорси в 2006 году: 'just setting up my twttr'.",
+    "В 1999 году NASA потеряло спутник из-за путаницы между метрической и дюймовой системами.",
+    "Самый дорогой домен в истории — cars.com (872 млн долларов).",
+    "В Норвегии доступ к интернету является правом человека.",
+    "Первый смайлик :-) был предложен профессором Скоттом Фалманом в 1982 году.",
+    "Каждый день отправляется более 300 миллиардов электронных писем.",
+    "В Китае есть лагеря для лечения интернет-зависимости.",
+    "Первая компьютерная игра Spacewar! была создана в 1962 году.",
+    "Билл Гейтс написал свою первую программу в 13 лет (крестики-нолики).",
+    "В 2012 году Facebook купил Instagram за 1 миллиард долларов.",
+    "Первый iPhone был представлен Стивом Джобсом в 2007 году.",
+    "В Антарктиде есть банкомат.",
+    "Самая популярная операционная система в мире — Android.",
+    "В 1980-х годах 1 ГБ памяти стоил около 100 000 долларов.",
+    "Первый вирус Creeper просто выводил сообщение: 'Я Creeper, поймай меня, если сможешь'.",
+    "В Финляндии доступ к широкополосному интернету гарантирован законом.",
+    "Каждый день в мире взламывают около 30 000 сайтов.",
+    "Первый баннер в интернете появился в 1994 году.",
+    "В 2000 году флешка на 8 МБ стоила около 50 долларов.",
+    "Самый быстрый суперкомпьютер Frontier выполняет 1.1 квинтиллиона операций в секунду.",
+    "В 1971 году было отправлено первое электронное письмо.",
+    "В мире больше мобильных телефонов, чем людей.",
+    "Первый браузер назывался WorldWideWeb (позже переименован в Nexus).",
+    "В 1995 году доменное имя было бесплатным.",
+    "В среднем человек проверяет телефон 58 раз в день.",
+    "Первый жесткий диск IBM 305 RAMAC (1956) вмещал 5 МБ данных.",
+    "В 2005 году YouTube был сайтом знакомств.",
+    "В 2010 году биткоин стоил меньше цента.",
+    "Первый смартфон IBM Simon появился в 1992 году.",
+    "В 1998 году Google хранился на 10 жестких дисках по 4 ГБ.",
+    "В 2004 году Gmail был запущен 1 апреля, и многие думали, что это шутка.",
+    "В 2009 году был добыт первый блок биткоина (Genesis Block)."
+]
+
+class CourseStorage:
+    def __init__(self, filename='courses.json'):
+        self.filename = filename
+        self.courses = self.load()
+
+    def load(self):
+        if not os.path.exists(self.filename):
+            return []
+        try:
+            with open(self.filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return []
+
+    def save(self, course):
+        # Check if course already exists (by topic and difficulty) to avoid duplicates
+        for c in self.courses:
+            if c.get('meta', {}).get('topic') == course.get('meta', {}).get('topic') and \
+               c.get('meta', {}).get('difficulty') == course.get('meta', {}).get('difficulty'):
+                return
+        
+        self.courses.insert(0, course)
+        self._write()
+
+    def _write(self):
+        with open(self.filename, 'w', encoding='utf-8') as f:
+            json.dump(self.courses, f, ensure_ascii=False, indent=2)
+            
+    def get_all(self):
+        return self.courses
+
 KV = """
 ScreenManager:
-    HomeScreen:
+    MainScreen:
     LoadingScreen:
     TheoryScreen:
     QuizScreen:
     FinalScreen:
+
+<NavButton@ToggleButton>:
+    background_normal: ''
+    background_down: ''
+    background_color: 0, 0, 0, 0
+    group: 'nav'
+    color: (0.5, 0.5, 0.5, 1) if self.state == 'normal' else (0.15, 0.55, 0.9, 1)
+    bold: True if self.state == 'down' else False
+    font_size: '16sp'
+    canvas.before:
+        Color:
+            rgba: (0.15, 0.55, 0.9, 1) if self.state == 'down' else (0, 0, 0, 0)
+        Line:
+            points: [self.x + self.width * 0.2, self.y + self.height - 2, self.x + self.width * 0.8, self.y + self.height - 2]
+            width: 2 if self.state == 'down' else 0.001
+
+<MainScreen>:
+    name: 'main'
+    BoxLayout:
+        orientation: 'vertical'
+        
+        ScreenManager:
+            id: tab_manager
+            SavedScreen:
+                name: 'saved'
+            SearchScreen:
+                name: 'search'
+                
+        BoxLayout:
+            size_hint_y: None
+            height: 60
+            padding: [0, 5]
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: 0.9, 0.9, 0.9, 1
+                Line:
+                    points: [self.x, self.y + self.height, self.x + self.width, self.y + self.height]
+                    width: 1
+            
+            NavButton:
+                text: 'Мои курсы'
+                state: 'down'
+                on_release: tab_manager.current = 'saved'
+                
+            NavButton:
+                text: 'Поиск'
+                state: 'normal'
+                on_release: tab_manager.current = 'search'
+
+<SavedScreen>:
+    on_enter: app.load_saved_courses_ui()
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [16, 16]
+        spacing: 10
+        
+        Label:
+            text: 'Сохраненные курсы'
+            color: 0.15, 0.55, 0.9, 1
+            font_size: '22sp'
+            bold: True
+            size_hint_y: None
+            height: 40
+            halign: 'left'
+            text_size: self.width, None
+
+        ScrollView:
+            GridLayout:
+                id: courses_grid
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: 10
+
+<SearchScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [12, 8, 12, 8]
+        spacing: 8
+
+        card:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: 320
+            Label:
+                text: 'Добро пожаловать! Введите тему для теста:'
+                color: 0.15, 0.55, 0.9, 1
+                font_size: '18sp'
+                halign: 'center'
+                valign: 'middle'
+                text_size: self.width - 24, None
+                size_hint_y: None
+                height: 60
+
+            TextInput:
+                id: topic_input
+                hint_text: 'Например: Космос'
+                multiline: False
+                size_hint_y: None
+                height: 50
+                font_size: '18sp'
+                padding: [10, 12]
+                background_normal: ''
+                background_active: ''
+                background_color: 1, 1, 1, 1
+                foreground_color: 0, 0, 0, 1
+                cursor_color: 0.15, 0.55, 0.9, 1
+                halign: 'center'
+
+            Label:
+                text: 'Сложность:'
+                color: 0.5, 0.5, 0.5, 1
+                font_size: '14sp'
+                size_hint_y: None
+                height: 20
+
+            BoxLayout:
+                size_hint_y: None
+                height: 40
+                spacing: 10
+                DifficultyButton:
+                    text: 'Легкий'
+                    state: 'down'
+                    on_release: app.set_difficulty('легкий')
+                DifficultyButton:
+                    text: 'Средний'
+                    on_release: app.set_difficulty('средний')
+                DifficultyButton:
+                    text: 'Эксперт'
+                    on_release: app.set_difficulty('эксперт')
+
+            Widget:
+                size_hint_y: None
+                height: 10
+
+            RoundedButton:
+                text: 'НАЧАТЬ ТЕСТ'
+                font_size: '20sp'
+                bold: True
+                size_hint: None, None
+                size: 280, 60
+                pos_hint: {'center_x': 0.5}
+                on_release: app.start_generation()
+
+        Widget:
+
+<card@BoxLayout>:
+    padding: [16, 8, 16, 16]
+    spacing: 10
+    canvas.before:
+        Color:
+            rgba: (0.95, 0.93, 0.90, 1)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [20]
 
 <TheoryScreen>:
     name: 'theory'
@@ -31,13 +300,37 @@ ScreenManager:
         padding: 16
         spacing: 12
 
-        Label:
-            text: 'Теория'
-            color: 0.15, 0.55, 0.9, 1
-            font_size: '24sp'
-            bold: True
+        BoxLayout:
             size_hint_y: None
-            height: 40
+            height: 50
+            spacing: 10
+            
+            Button:
+                text: '<'
+                size_hint_x: None
+                width: 50
+                background_normal: ''
+                background_color: (0,0,0,0)
+                color: (0.15, 0.55, 0.9, 1)
+                font_size: '24sp'
+                bold: True
+                on_release: app.root.current = 'main'
+                canvas.before:
+                    Color:
+                        rgba: (0.9, 0.9, 0.9, 1)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12]
+
+            Label:
+                text: 'Теория'
+                color: 0.15, 0.55, 0.9, 1
+                font_size: '24sp'
+                bold: True
+                halign: 'left'
+                text_size: self.size
+                valign: 'middle'
 
         BoxLayout:
             size_hint_y: None
@@ -81,6 +374,8 @@ ScreenManager:
 
 <LoadingScreen>:
     name: 'loading'
+    on_enter: root.start_fact_cycle()
+    on_leave: root.stop_fact_cycle()
     BoxLayout:
         orientation: 'vertical'
         padding: 20
@@ -98,6 +393,22 @@ ScreenManager:
             halign: 'center'
             size_hint_y: None
             height: 30
+        
+        Widget:
+            size_hint_y: 0.1
+            
+        Label:
+            id: fact_label
+            text: ''
+            color: 0.4, 0.4, 0.4, 1
+            font_size: '14sp'
+            halign: 'center'
+            valign: 'top'
+            text_size: self.width, None
+            size_hint_y: None
+            height: 80
+            italic: True
+
         Widget:
             size_hint_y: 0.3
 
@@ -213,6 +524,31 @@ ScreenManager:
         padding: 16
         spacing: 12
 
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            spacing: 10
+            
+            Button:
+                text: '<'
+                size_hint_x: None
+                width: 50
+                background_normal: ''
+                background_color: (0,0,0,0)
+                color: (0.15, 0.55, 0.9, 1)
+                font_size: '24sp'
+                bold: True
+                on_release: app.root.current = 'main'
+                canvas.before:
+                    Color:
+                        rgba: (0.9, 0.9, 0.9, 1)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12]
+
+            Widget:
+
         Label:
             id: question_label
             text: root.current_question_text
@@ -294,8 +630,61 @@ ScreenManager:
             pos_hint: {'center_x': 0.5}
             bg_color: (0.8, 0.3, 0.3, 1)
             color: 1, 1, 1, 1
-            on_release: app.root.current = 'home'
+            on_release: app.root.current = 'main'
 """
+
+
+class CourseCard(ButtonBehavior, BoxLayout):
+    bg_color = ListProperty([1, 1, 1, 1])
+    
+    def __init__(self, topic, difficulty, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = [16, 12]
+        self.spacing = 4
+        self.size_hint_y = None
+        self.height = 90
+        
+        with self.canvas.before:
+            self._rect_color = Color(rgba=self.bg_color)
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[16])
+            
+        self.bind(pos=self._update_rect, size=self._update_rect)
+        
+        # Topic Label
+        self.add_widget(Label(
+            text=topic,
+            color=(0.2, 0.2, 0.2, 1),
+            font_size='18sp',
+            bold=True,
+            halign='left',
+            valign='middle',
+            text_size=(self.width, None),
+            size_hint_y=None,
+            height=30
+        ))
+        
+        # Difficulty Label
+        diff_color = (0.3, 0.7, 0.3, 1) if 'легкий' in difficulty.lower() else \
+                     (0.9, 0.6, 0.2, 1) if 'средний' in difficulty.lower() else \
+                     (0.9, 0.3, 0.3, 1)
+                     
+        self.add_widget(Label(
+            text=difficulty,
+            color=diff_color,
+            font_size='14sp',
+            halign='left',
+            valign='middle',
+            text_size=(self.width, None),
+            size_hint_y=None,
+            height=20
+        ))
+
+    def _update_rect(self, *args):
+        self._rect.pos = self.pos
+        self._rect.size = self.size
+        for child in self.children:
+            child.text_size = (self.width - 32, None)
 
 
 class RoundedButton(Button):
@@ -381,12 +770,27 @@ class OptionButton(Button):
         self.color = (1, 1, 1, 1) if selected else (0, 0, 0, 1)
 
 
-class HomeScreen(Screen):
+class MainScreen(Screen):
     pass
 
+class SavedScreen(Screen):
+    pass
+
+class SearchScreen(Screen):
+    pass
 
 class LoadingScreen(Screen):
-    pass
+    def start_fact_cycle(self):
+        self.update_fact()
+        self._fact_event = Clock.schedule_interval(self.update_fact, 7)
+
+    def stop_fact_cycle(self):
+        if hasattr(self, '_fact_event'):
+            self._fact_event.cancel()
+
+    def update_fact(self, dt=None):
+        fact = random.choice(INTERESTING_FACTS)
+        self.ids.fact_label.text = f"Интересный факт:\n{fact}"
 
 
 class TheoryScreen(Screen):
@@ -532,6 +936,7 @@ class MyApp(App):
     difficulty = StringProperty('легкий')
 
     def build(self):
+        self.storage = CourseStorage()
         root = Builder.load_string(KV)
         return root
 
@@ -539,8 +944,10 @@ class MyApp(App):
         self.difficulty = level
 
     def start_generation(self):
-        home = self.root.get_screen('home')
-        topic = home.ids.topic_input.text.strip()
+        # Access SearchScreen through MainScreen -> ScreenManager
+        main_screen = self.root.get_screen('main')
+        search_screen = main_screen.ids.tab_manager.get_screen('search')
+        topic = search_screen.ids.topic_input.text.strip()
         if not topic:
             topic = "Общие знания"
         
@@ -553,6 +960,9 @@ class MyApp(App):
 
     def on_generation_complete(self, result):
         if result and 'questions' in result:
+            # Save the generated course
+            self.storage.save(result)
+            
             # Сохраняем вопросы в QuizScreen
             quiz_screen = self.root.get_screen('quiz')
             quiz_screen.questions = result['questions']
@@ -574,7 +984,32 @@ class MyApp(App):
         else:
             # Если ошибка, возвращаемся на главную и показываем уведомление (в консоль пока)
             print("Failed to generate quiz")
-            self.root.current = 'home'
+            self.root.current = 'main'
+
+    def load_saved_courses_ui(self):
+        main_screen = self.root.get_screen('main')
+        saved_screen = main_screen.ids.tab_manager.get_screen('saved')
+        grid = saved_screen.ids.courses_grid
+        grid.clear_widgets()
+        
+        courses = self.storage.get_all()
+        if not courses:
+            lbl = Label(text="Нет сохраненных курсов", color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=40)
+            grid.add_widget(lbl)
+            return
+
+        for course in courses:
+            meta = course.get('meta', {})
+            topic = meta.get('topic', 'Без темы')
+            diff = meta.get('difficulty', '')
+            
+            btn = CourseCard(topic=topic, difficulty=diff)
+            # Use a closure to capture the specific course
+            btn.bind(on_release=lambda x, c=course: self.start_saved_course(c))
+            grid.add_widget(btn)
+
+    def start_saved_course(self, course):
+        self.on_generation_complete(course)
 
     def start_quiz_from_theory(self):
         self.start_quiz()
