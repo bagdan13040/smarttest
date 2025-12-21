@@ -11,11 +11,17 @@ package.domain = org.example
 # (str) Source code where the main.py is located
 source.dir = .
 
+# (list) Source files to include (let empty to include all the files)
+source.include_exts = py,png,jpg,kv,atlas,json
+
+# (list) List of inclusions using pattern matching
+source.include_patterns = .env
+
 # (str) Application versioning (method 1)
 version = 0.1
 
 # (list) Application requirements
-requirements = python3,kivy,requests
+requirements = python3,kivy,requests,python-dotenv
 
 # (str) Icon of the application
 icon.filename = assets/icon.png

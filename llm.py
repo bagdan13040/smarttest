@@ -1,10 +1,19 @@
 import requests
 import json
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def generate_quiz(topic, difficulty="средний"):
     url = "https://openrouter.ai/api/v1/chat/completions"
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        print("Error: OPENROUTER_API_KEY not found in environment variables")
+        return generate_mock_quiz(topic, difficulty)
+
     headers = {
-        "Authorization": "Bearer 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",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     
