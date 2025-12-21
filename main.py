@@ -216,7 +216,16 @@ ScreenManager:
         padding: [12, 8, 12, 8]
         spacing: 8
 
-        card:
+        BoxLayout:
+            padding: [16, 8, 16, 16]
+            spacing: 10
+            canvas.before:
+                Color:
+                    rgba: (0.95, 0.93, 0.90, 1)
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [20]
             orientation: 'vertical'
             size_hint_y: None
             height: 320
@@ -281,17 +290,6 @@ ScreenManager:
                 on_release: app.start_generation()
 
         Widget:
-
-<card@BoxLayout>:
-    padding: [16, 8, 16, 16]
-    spacing: 10
-    canvas.before:
-        Color:
-            rgba: (0.95, 0.93, 0.90, 1)
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [20]
 
 <TheoryScreen>:
     name: 'theory'
@@ -412,108 +410,7 @@ ScreenManager:
         Widget:
             size_hint_y: 0.3
 
-<card@BoxLayout>:
-    padding: [16, 8, 16, 16]
-    spacing: 10
-    canvas.before:
-        Color:
-            rgba: (0.95, 0.93, 0.90, 1)
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [20]
 
-<HomeScreen>:
-    name: 'home'
-    BoxLayout:
-        orientation: 'vertical'
-        padding: [12, 8, 12, 8]
-        spacing: 8
-
-        BoxLayout:
-            size_hint_y: None
-            height: 56
-            padding: 0, 6
-            canvas.before:
-                Color:
-                    rgba: (0.15, 0.55, 0.9, 1)
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [16]
-            Label:
-                text: 'Kivy Light App'
-                color: 1, 1, 1, 1
-                bold: True
-                font_size: '22sp'
-
-        card:
-            orientation: 'vertical'
-            size_hint_y: None
-            height: 320
-            Label:
-                text: 'Добро пожаловать! Введите тему для теста:'
-                color: 0.15, 0.55, 0.9, 1
-                font_size: '18sp'
-                halign: 'center'
-                valign: 'middle'
-                text_size: self.width - 24, None
-                size_hint_y: None
-                height: 60
-
-            TextInput:
-                id: topic_input
-                hint_text: 'Например: Космос'
-                multiline: False
-                size_hint_y: None
-                height: 50
-                font_size: '18sp'
-                padding: [10, 12]
-                background_normal: ''
-                background_active: ''
-                background_color: 1, 1, 1, 1
-                foreground_color: 0, 0, 0, 1
-                cursor_color: 0.15, 0.55, 0.9, 1
-                halign: 'center'
-
-            Label:
-                text: 'Сложность:'
-                color: 0.5, 0.5, 0.5, 1
-                font_size: '14sp'
-                size_hint_y: None
-                height: 20
-
-            BoxLayout:
-                size_hint_y: None
-                height: 40
-                spacing: 10
-                DifficultyButton:
-                    text: 'Легкий'
-                    state: 'down'
-                    on_release: app.set_difficulty('легкий')
-                DifficultyButton:
-                    text: 'Средний'
-                    on_release: app.set_difficulty('средний')
-                DifficultyButton:
-                    text: 'Эксперт'
-                    on_release: app.set_difficulty('эксперт')
-
-            Widget:
-                size_hint_y: None
-                height: 10
-
-            RoundedButton:
-                text: 'НАЧАТЬ ТЕСТ'
-                font_size: '20sp'
-                bold: True
-                size_hint: None, None
-                size: 280, 60
-                pos_hint: {'center_x': 0.5}
-                bg_color: (0.15, 0.55, 0.9, 1)
-                color: 1, 1, 1, 1
-                on_release: app.start_generation()
-
-        Widget:
 
 <QuizScreen>:
     name: 'quiz'
