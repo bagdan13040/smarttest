@@ -64,4 +64,4 @@ warn_on_root = 1
 
 [app:android]
 # (str) Add extra permissions
-android.permissions = INTERNET
+android.permissions = INTERNET,ACCESS_NETWORK_STATE
