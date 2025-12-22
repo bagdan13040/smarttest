@@ -953,7 +953,9 @@ class MyApp(App):
         settings_screen = main_screen.ids.tab_manager.get_screen('settings')
         
         if self.settings_store.exists('api'):
-            key = self.settings_store.get('api')['key']
+            # Use .get with default to handle migration if needed, though 'key' was broken so likely not saved
+            data = self.settings_store.get('api')
+            key = data.get('api_key', data.get('key', ''))
             settings_screen.ids.api_key_input.text = key
 
     def save_settings(self):
@@ -962,7 +964,8 @@ class MyApp(App):
             settings_screen = main_screen.ids.tab_manager.get_screen('settings')
             key = settings_screen.ids.api_key_input.text.strip()
             
-            self.settings_store.put('api', key=key)
+            # Changed 'key' to 'api_key' to avoid conflict with Kivy's internal arguments
+            self.settings_store.put('api', api_key=key)
             settings_screen.ids.status_label.text = "Настройки сохранены!"
             Clock.schedule_once(lambda dt: setattr(settings_screen.ids.status_label, 'text', ''), 2)
         except Exception as e:
@@ -993,7 +996,8 @@ class MyApp(App):
         # Get API key from settings
         api_key = None
         if self.settings_store.exists('api'):
-            api_key = self.settings_store.get('api')['key']
+            data = self.settings_store.get('api')
+            api_key = data.get('api_key', data.get('key'))
             
         result = generate_quiz(topic, difficulty, api_key=api_key)
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
