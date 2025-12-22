@@ -1051,27 +1051,34 @@ class MyApp(App):
         threading.Thread(target=self._check_connection_thread).start()
 
     def _check_connection_thread(self):
-        status_text = "Ошибка сети"
+        status_text = "Проверка..."
         try:
-            # 1. Check DNS/Socket
-            socket.create_connection(("8.8.8.8", 53), timeout=3)
-            status_text = "Сеть: OK"
-            
-            # 2. Check HTTP & Time
+            # Try HTTP request directly - this is the most reliable check
+            # because it uses system proxies and DNS settings
             try:
-                # Using a reliable time API
-                res = requests.get("http://worldtimeapi.org/api/timezone/Etc/UTC", timeout=5)
+                res = requests.get("https://www.google.com", timeout=5)
                 if res.status_code == 200:
-                    data = res.json()
-                    # Extract time HH:MM:SS
-                    time_str = data['datetime'][11:19]
-                    status_text = f"OK (UTC {time_str})"
-            except Exception as e:
-                status_text = "Сеть есть, HTTP нет"
-                print(f"HTTP check failed: {e}")
+                    status_text = "Сеть: OK"
+                    
+                    # Try to get time
+                    try:
+                        res_time = requests.get("http://worldtimeapi.org/api/timezone/Etc/UTC", timeout=5)
+                        if res_time.status_code == 200:
+                            data = res_time.json()
+                            time_str = data['datetime'][11:19]
+                            status_text = f"OK (UTC {time_str})"
+                    except:
+                        pass # Time check failed, but internet is OK
+                else:
+                    status_text = f"HTTP {res.status_code}"
+            except requests.exceptions.ConnectionError:
+                status_text = "Ошибка соединения"
+            except requests.exceptions.Timeout:
+                status_text = "Тайм-аут"
                 
-        except OSError:
-            status_text = "Нет интернета"
+        except Exception as e:
+            status_text = "Ошибка"
+            print(f"Check failed: {e}")
         
         Clock.schedule_once(lambda dt: self._update_net_status(status_text))
 
