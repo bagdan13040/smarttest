@@ -934,8 +934,14 @@ class MyApp(App):
     difficulty = StringProperty('легкий')
 
     def build(self):
-        self.storage = CourseStorage()
-        self.settings_store = JsonStore('settings.json')
+        # Use the application's private data directory for storage
+        data_dir = self.user_data_dir
+        courses_path = os.path.join(data_dir, 'courses.json')
+        settings_path = os.path.join(data_dir, 'settings.json')
+        
+        self.storage = CourseStorage(filename=courses_path)
+        self.settings_store = JsonStore(settings_path)
+        
         root = Builder.load_string(KV)
         return root
 
@@ -948,13 +954,21 @@ class MyApp(App):
             settings_screen.ids.api_key_input.text = key
 
     def save_settings(self):
-        main_screen = self.root.get_screen('main')
-        settings_screen = main_screen.ids.tab_manager.get_screen('settings')
-        key = settings_screen.ids.api_key_input.text.strip()
-        
-        self.settings_store.put('api', key=key)
-        settings_screen.ids.status_label.text = "Настройки сохранены!"
-        Clock.schedule_once(lambda dt: setattr(settings_screen.ids.status_label, 'text', ''), 2)
+        try:
+            main_screen = self.root.get_screen('main')
+            settings_screen = main_screen.ids.tab_manager.get_screen('settings')
+            key = settings_screen.ids.api_key_input.text.strip()
+            
+            self.settings_store.put('api', key=key)
+            settings_screen.ids.status_label.text = "Настройки сохранены!"
+            Clock.schedule_once(lambda dt: setattr(settings_screen.ids.status_label, 'text', ''), 2)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+            # Try to show error on screen if possible
+            try:
+                settings_screen.ids.status_label.text = "Ошибка сохранения"
+            except:
+                pass
 
     def set_difficulty(self, level):
         self.difficulty = level
