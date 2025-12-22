@@ -21,7 +21,7 @@ source.include_patterns = .env
 version = 0.3
 
 # (list) Application requirements
-requirements = python3,kivy,requests,python-dotenv
+requirements = python3,kivy,requests,python-dotenv,urllib3,charset_normalizer,idna,certifi
 
 # (str) Icon of the application
 icon.filename = assets/icon.png
@@ -42,7 +42,7 @@ android.sdk = 33
 android.ndk = 25b
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
-android.archs = arm64-v8a, armeabi-v7a, x86_64
+android.archs = arm64-v8a
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
