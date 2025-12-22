@@ -10,6 +10,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.graphics import Color, RoundedRectangle
 from kivy.clock import Clock
+from kivy.metrics import dp
 import threading
 import random
 import json
@@ -167,6 +168,7 @@ ScreenManager:
     BoxLayout:
         orientation: 'vertical'
         size_hint: (1, 1)
+        padding: [0, dp(30), 0, 0]  # Top padding for status bar
         
         ScreenManager:
             id: tab_manager
@@ -178,8 +180,8 @@ ScreenManager:
                 
         BoxLayout:
             size_hint_y: None
-            height: 60
-            padding: [0, 5]
+            height: dp(80)  # Increased height
+            padding: [0, dp(5)]
             size_hint_x: 1
             orientation: 'horizontal'
             canvas.before:
