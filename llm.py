@@ -8,27 +8,32 @@ from pathlib import Path
 env_path = Path(__file__).parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-def generate_quiz(topic, difficulty="средний", api_key=None):
+def generate_quiz(topic, difficulty="средний", api_key=None, server_url=None):
     print(f"Generating quiz for topic: {topic}, difficulty: {difficulty}")
-    url = "https://openrouter.ai/api/v1/chat/completions"
     
-    # Priority: 1. Passed argument (from settings), 2. Environment variable
-    if not api_key:
-        api_key = os.getenv("OPENROUTER_API_KEY")
-    
-    if api_key:
-        print(f"API Key found: {api_key[:5]}...{api_key[-5:]}")
+    # Determine URL and headers based on whether we use a proxy server or direct API
+    if server_url:
+        url = f"{server_url}/generate_quiz"
+        print(f"Using custom server: {url}")
+        headers = {"Content-Type": "application/json"}
     else:
-        msg = "Error: OPENROUTER_API_KEY not found in environment variables or settings"
-        print(msg)
-        print(f"Checked .env at: {env_path}, exists: {env_path.exists()}")
-        return generate_mock_quiz(topic, difficulty, error=msg)
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        # Priority: 1. Passed argument (from settings), 2. Environment variable
+        if not api_key:
+            api_key = os.getenv("OPENROUTER_API_KEY")
+        
+        if api_key:
+            print(f"API Key found: {api_key[:5]}...{api_key[-5:]}")
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+        else:
+            msg = "Error: OPENROUTER_API_KEY not found in environment variables or settings"
+            print(msg)
+            print(f"Checked .env at: {env_path}, exists: {env_path.exists()}")
+            return generate_mock_quiz(topic, difficulty, error=msg)
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    
     # Промпт для генерации JSON
     prompt = (
         f"Тема: '{topic}'. Сложность: '{difficulty}'. "

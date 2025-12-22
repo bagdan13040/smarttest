@@ -344,7 +344,7 @@ ScreenManager:
             text_size: (self.width, None)
 
         Label:
-            text: 'API Ключ OpenRouter:'
+            text: 'API Ключ OpenRouter (оставьте пустым, если используете сервер):'
             color: 0.4, 0.4, 0.4, 1
             font_size: '16sp'
             size_hint_y: None
@@ -355,6 +355,29 @@ ScreenManager:
         TextInput:
             id: api_key_input
             hint_text: 'sk-or-...'
+            multiline: False
+            size_hint_y: None
+            height: dp(50)
+            font_size: '16sp'
+            padding: [dp(10), dp(12)]
+            background_normal: ''
+            background_active: ''
+            background_color: 1, 1, 1, 1
+            foreground_color: 0, 0, 0, 1
+            cursor_color: 0.15, 0.55, 0.9, 1
+
+        Label:
+            text: 'Адрес локального сервера (опционально):'
+            color: 0.4, 0.4, 0.4, 1
+            font_size: '16sp'
+            size_hint_y: None
+            height: dp(30)
+            halign: 'left'
+            text_size: (self.width, None)
+
+        TextInput:
+            id: server_url_input
+            hint_text: 'http://192.168.1.X:5000'
             multiline: False
             size_hint_y: None
             height: dp(50)
@@ -995,16 +1018,19 @@ class MyApp(App):
             # Use .get with default to handle migration if needed, though 'key' was broken so likely not saved
             data = self.settings_store.get('api')
             key = data.get('api_key', data.get('key', ''))
+            server_url = data.get('server_url', '')
             settings_screen.ids.api_key_input.text = key
+            settings_screen.ids.server_url_input.text = server_url
 
     def save_settings(self):
         try:
             main_screen = self.root.get_screen('main')
             settings_screen = main_screen.ids.tab_manager.get_screen('settings')
             key = settings_screen.ids.api_key_input.text.strip()
+            server_url = settings_screen.ids.server_url_input.text.strip()
             
             # Changed 'key' to 'api_key' to avoid conflict with Kivy's internal arguments
-            self.settings_store.put('api', api_key=key)
+            self.settings_store.put('api', api_key=key, server_url=server_url)
             settings_screen.ids.status_label.text = "Настройки сохранены!"
             Clock.schedule_once(lambda dt: setattr(settings_screen.ids.status_label, 'text', ''), 2)
         except Exception as e:
@@ -1034,12 +1060,14 @@ class MyApp(App):
     def generate_quiz_thread(self, topic, difficulty):
         # Get API key from settings
         api_key = None
+        server_url = None
         if self.settings_store.exists('api'):
             data = self.settings_store.get('api')
             api_key = data.get('api_key', data.get('key'))
+            server_url = data.get('server_url')
             
         self.log(f"Starting generation for {topic}...")
-        result = generate_quiz(topic, difficulty, api_key=api_key)
+        result = generate_quiz(topic, difficulty, api_key=api_key, server_url=server_url)
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
 
     def on_generation_complete(self, result):
