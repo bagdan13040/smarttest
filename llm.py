@@ -2,20 +2,22 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Explicitly load .env file to avoid stack frame inspection errors on Android
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
-else:
-    # Fallback for when .env is not found (e.g. CI/CD without secrets)
-    load_dotenv()
+# Explicitly load .env from the same directory as this script
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 def generate_quiz(topic, difficulty="средний"):
+    print(f"Generating quiz for topic: {topic}, difficulty: {difficulty}")
     url = "https://openrouter.ai/api/v1/chat/completions"
     api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
+    
+    if api_key:
+        print(f"API Key found: {api_key[:5]}...{api_key[-5:]}")
+    else:
         print("Error: OPENROUTER_API_KEY not found in environment variables")
+        print(f"Checked .env at: {env_path}, exists: {env_path.exists()}")
         return generate_mock_quiz(topic, difficulty)
 
     headers = {
@@ -36,7 +38,7 @@ def generate_quiz(topic, difficulty="средний"):
     )
 
     data = {
-        "model": "deepseek/deepseek-v3.2",
+        "model": "xiaomi/mimo-v2-flash:free",
         "messages": [
             {
                 "role": "system",
@@ -50,7 +52,9 @@ def generate_quiz(topic, difficulty="средний"):
     }
 
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(data))
+        print(f"Sending request to {url}...")
+        response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+        print(f"Response status: {response.status_code}")
         response.raise_for_status()
         result = response.json()
         
