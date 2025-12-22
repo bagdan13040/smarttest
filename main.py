@@ -11,6 +11,7 @@ from kivy.uix.label import Label
 from kivy.graphics import Color, RoundedRectangle
 from kivy.clock import Clock
 from kivy.metrics import dp
+from datetime import datetime
 import threading
 import random
 import json
@@ -107,9 +108,6 @@ INTERESTING_FACTS = [
 
 from kivy.storage.jsonstore import JsonStore
 
-import socket
-import datetime
-
 class CourseStorage:
     def __init__(self, filename='courses.json'):
         self.filename = filename
@@ -172,11 +170,36 @@ ScreenManager:
 
 <MainScreen>:
     name: 'main'
+    on_enter: root.start_clock()
+    on_leave: root.stop_clock()
     BoxLayout:
         orientation: 'vertical'
         size_hint: (1, 1)
         padding: [0, dp(30), 0, 0]  # Top padding for status bar
         
+        BoxLayout:
+            size_hint_y: None
+            height: dp(30)
+            padding: [dp(16), 0]
+            
+            Label:
+                text: 'SmartTest'
+                font_size: '18sp'
+                bold: True
+                color: 0.15, 0.55, 0.9, 1
+                halign: 'left'
+                text_size: self.size
+                valign: 'middle'
+            
+            Label:
+                id: clock_label
+                text: '00:00'
+                font_size: '16sp'
+                color: 0.5, 0.5, 0.5, 1
+                halign: 'right'
+                text_size: self.size
+                valign: 'middle'
+
         ScreenManager:
             id: tab_manager
             size_hint: (1, 1)
@@ -379,30 +402,6 @@ ScreenManager:
             bg_color: (0.15, 0.55, 0.9, 1)
             color: 1, 1, 1, 1
             on_release: app.save_settings()
-
-        BoxLayout:
-            size_hint_y: None
-            height: dp(40)
-            spacing: dp(10)
-            
-            RoundedButton:
-                text: 'ПРОВЕРИТЬ СЕТЬ'
-                font_size: '14sp'
-                bold: True
-                size_hint_x: 0.5
-                bg_color: (0.5, 0.5, 0.5, 1)
-                color: 1, 1, 1, 1
-                on_release: app.check_connection()
-                
-            Label:
-                id: net_status
-                text: 'Не проверено'
-                color: 0.2, 0.2, 0.2, 1
-                font_size: '14sp'
-                size_hint_x: 0.5
-                halign: 'left'
-                valign: 'middle'
-                text_size: self.size
 
         Label:
             id: status_label
@@ -821,7 +820,16 @@ class OptionButton(Button):
 
 
 class MainScreen(Screen):
-    pass
+    def start_clock(self):
+        self.update_clock()
+        self._clock_event = Clock.schedule_interval(self.update_clock, 1)
+    
+    def stop_clock(self):
+        if hasattr(self, '_clock_event'):
+            self._clock_event.cancel()
+
+    def update_clock(self, dt=None):
+        self.ids.clock_label.text = datetime.now().strftime('%H:%M')
 
 class SavedScreen(Screen):
     pass
@@ -1043,64 +1051,6 @@ class MyApp(App):
                 settings_screen.ids.status_label.text = f"Ошибка: {err_msg}"
             except:
                 pass
-
-    def check_connection(self):
-        main_screen = self.root.get_screen('main')
-        settings_screen = main_screen.ids.tab_manager.get_screen('settings')
-        settings_screen.ids.net_status.text = "Проверка..."
-        threading.Thread(target=self._check_connection_thread).start()
-
-    def _check_connection_thread(self):
-        self.log("Checking connection...")
-        status_text = "Проверка..."
-        try:
-            # Try HTTP request directly - this is the most reliable check
-            # because it uses system proxies and DNS settings
-            try:
-                self.log("Pinging google.com...")
-                res = requests.get("https://www.google.com", timeout=5)
-                if res.status_code == 200:
-                    status_text = "Сеть: OK"
-                    self.log("Google reachable. Checking time...")
-                    
-                    # Try to get time
-                    try:
-                        res_time = requests.get("http://worldtimeapi.org/api/timezone/Etc/UTC", timeout=5)
-                        if res_time.status_code == 200:
-                            data = res_time.json()
-                            time_str = data['datetime'][11:19]
-                            status_text = f"OK (UTC {time_str})"
-                            self.log(f"Time synced: {time_str}")
-                    except Exception as e:
-                        self.log(f"Time check failed: {e}")
-                        pass # Time check failed, but internet is OK
-                else:
-                    status_text = f"HTTP {res.status_code}"
-                    self.log(f"Google returned status: {res.status_code}")
-            except requests.exceptions.ConnectionError as e:
-                status_text = "Ошибка соединения"
-                self.log(f"Connection Error: {e}")
-            except requests.exceptions.Timeout:
-                status_text = "Тайм-аут"
-                self.log("Connection timed out")
-            except requests.exceptions.SSLError as e:
-                status_text = "SSL Ошибка"
-                self.log(f"SSL Error: {e}")
-                
-        except Exception as e:
-            status_text = "Ошибка"
-            self.log(f"General Check Error: {e}")
-            print(f"Check failed: {e}")
-        
-        Clock.schedule_once(lambda dt: self._update_net_status(status_text))
-
-    def _update_net_status(self, text):
-        try:
-            main_screen = self.root.get_screen('main')
-            settings_screen = main_screen.ids.tab_manager.get_screen('settings')
-            settings_screen.ids.net_status.text = text
-        except:
-            pass
 
     def set_difficulty(self, level):
         self.difficulty = level
