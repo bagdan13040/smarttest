@@ -936,6 +936,9 @@ class MyApp(App):
     def build(self):
         # Use the application's private data directory for storage
         data_dir = self.user_data_dir
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
         courses_path = os.path.join(data_dir, 'courses.json')
         settings_path = os.path.join(data_dir, 'settings.json')
         
@@ -966,7 +969,9 @@ class MyApp(App):
             print(f"Error saving settings: {e}")
             # Try to show error on screen if possible
             try:
-                settings_screen.ids.status_label.text = "Ошибка сохранения"
+                # Show the first 20 chars of the error to fit in UI
+                err_msg = str(e)[:30]
+                settings_screen.ids.status_label.text = f"Ошибка: {err_msg}"
             except:
                 pass
 
