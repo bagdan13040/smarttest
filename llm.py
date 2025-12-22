@@ -8,15 +8,18 @@ from pathlib import Path
 env_path = Path(__file__).parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-def generate_quiz(topic, difficulty="средний"):
+def generate_quiz(topic, difficulty="средний", api_key=None):
     print(f"Generating quiz for topic: {topic}, difficulty: {difficulty}")
     url = "https://openrouter.ai/api/v1/chat/completions"
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    
+    # Priority: 1. Passed argument (from settings), 2. Environment variable
+    if not api_key:
+        api_key = os.getenv("OPENROUTER_API_KEY")
     
     if api_key:
         print(f"API Key found: {api_key[:5]}...{api_key[-5:]}")
     else:
-        print("Error: OPENROUTER_API_KEY not found in environment variables")
+        print("Error: OPENROUTER_API_KEY not found in environment variables or settings")
         print(f"Checked .env at: {env_path}, exists: {env_path.exists()}")
         return generate_mock_quiz(topic, difficulty)
 

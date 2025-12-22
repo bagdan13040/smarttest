@@ -105,6 +105,8 @@ INTERESTING_FACTS = [
     "В 2009 году был добыт первый блок биткоина (Genesis Block)."
 ]
 
+from kivy.storage.jsonstore import JsonStore
+
 class CourseStorage:
     def __init__(self, filename='courses.json'):
         self.filename = filename
@@ -179,6 +181,8 @@ ScreenManager:
                 name: 'saved'
             SearchScreen:
                 name: 'search'
+            SettingsScreen:
+                name: 'settings'
                 
         BoxLayout:
             size_hint_y: None
@@ -202,13 +206,19 @@ ScreenManager:
                 text: 'Мои курсы'
                 state: 'down'
                 on_release: tab_manager.current = 'saved'
-                size_hint_x: 0.5
+                size_hint_x: 0.33
                 
             NavButton:
                 text: 'Поиск'
                 state: 'normal'
                 on_release: tab_manager.current = 'search'
-                size_hint_x: 0.5
+                size_hint_x: 0.33
+
+            NavButton:
+                text: 'Настройки'
+                state: 'normal'
+                on_release: tab_manager.current = 'settings'
+                size_hint_x: 0.33
 
 <SavedScreen>:
     on_enter: app.load_saved_courses_ui()
@@ -315,6 +325,69 @@ ScreenManager:
                 on_release: app.start_generation()
 
         Widget:
+
+<SettingsScreen>:
+    on_enter: app.load_settings_ui()
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(16), dp(16)]
+        spacing: dp(16)
+        
+        Label:
+            text: 'Настройки'
+            color: 0.15, 0.55, 0.9, 1
+            font_size: '22sp'
+            bold: True
+            size_hint_y: None
+            height: dp(40)
+            halign: 'left'
+            text_size: (self.width, None)
+
+        Label:
+            text: 'API Ключ OpenRouter:'
+            color: 0.4, 0.4, 0.4, 1
+            font_size: '16sp'
+            size_hint_y: None
+            height: dp(30)
+            halign: 'left'
+            text_size: (self.width, None)
+
+        TextInput:
+            id: api_key_input
+            hint_text: 'sk-or-...'
+            multiline: False
+            size_hint_y: None
+            height: dp(50)
+            font_size: '16sp'
+            padding: [dp(10), dp(12)]
+            background_normal: ''
+            background_active: ''
+            background_color: 1, 1, 1, 1
+            foreground_color: 0, 0, 0, 1
+            cursor_color: 0.15, 0.55, 0.9, 1
+
+        RoundedButton:
+            text: 'СОХРАНИТЬ'
+            font_size: '18sp'
+            bold: True
+            size_hint: None, None
+            size: dp(280), dp(50)
+            pos_hint: {'center_x': 0.5}
+            bg_color: (0.15, 0.55, 0.9, 1)
+            color: 1, 1, 1, 1
+            on_release: app.save_settings()
+
+        Label:
+            id: status_label
+            text: ''
+            color: 0.3, 0.8, 0.4, 1
+            font_size: '14sp'
+            halign: 'center'
+            size_hint_y: None
+            height: dp(30)
+
+        Widget:
+
 
 <TheoryScreen>:
     name: 'theory'
@@ -701,6 +774,9 @@ class SavedScreen(Screen):
 class SearchScreen(Screen):
     pass
 
+class SettingsScreen(Screen):
+    pass
+
 class LoadingScreen(Screen):
     def start_fact_cycle(self):
         self.update_fact()
@@ -859,8 +935,26 @@ class MyApp(App):
 
     def build(self):
         self.storage = CourseStorage()
+        self.settings_store = JsonStore('settings.json')
         root = Builder.load_string(KV)
         return root
+
+    def load_settings_ui(self):
+        main_screen = self.root.get_screen('main')
+        settings_screen = main_screen.ids.tab_manager.get_screen('settings')
+        
+        if self.settings_store.exists('api'):
+            key = self.settings_store.get('api')['key']
+            settings_screen.ids.api_key_input.text = key
+
+    def save_settings(self):
+        main_screen = self.root.get_screen('main')
+        settings_screen = main_screen.ids.tab_manager.get_screen('settings')
+        key = settings_screen.ids.api_key_input.text.strip()
+        
+        self.settings_store.put('api', key=key)
+        settings_screen.ids.status_label.text = "Настройки сохранены!"
+        Clock.schedule_once(lambda dt: setattr(settings_screen.ids.status_label, 'text', ''), 2)
 
     def set_difficulty(self, level):
         self.difficulty = level
@@ -877,7 +971,12 @@ class MyApp(App):
         threading.Thread(target=self.generate_quiz_thread, args=(topic, self.difficulty)).start()
 
     def generate_quiz_thread(self, topic, difficulty):
-        result = generate_quiz(topic, difficulty)
+        # Get API key from settings
+        api_key = None
+        if self.settings_store.exists('api'):
+            api_key = self.settings_store.get('api')['key']
+            
+        result = generate_quiz(topic, difficulty, api_key=api_key)
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
 
     def on_generation_complete(self, result):
