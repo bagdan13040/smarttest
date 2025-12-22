@@ -30,7 +30,7 @@ except Exception as e:
 
 # Warm light background
 Window.clearcolor = (0.95, 0.93, 0.90, 1)
-Window.size = (360, 700)
+# Window.size = (360, 700) # Removed to allow proper scaling on Android
 
 INTERESTING_FACTS = [
     "Первый компьютерный баг был настоящим мотыльком, застрявшим в реле.",
@@ -148,9 +148,13 @@ ScreenManager:
     background_down: ''
     background_color: 0, 0, 0, 0
     group: 'nav'
+    allow_no_selection: False
     color: (0.5, 0.5, 0.5, 1) if self.state == 'normal' else (0.15, 0.55, 0.9, 1)
     bold: True if self.state == 'down' else False
     font_size: '16sp'
+    halign: 'center'
+    valign: 'middle'
+    text_size: self.size
     canvas.before:
         Color:
             rgba: (0.15, 0.55, 0.9, 1) if self.state == 'down' else (0, 0, 0, 0)
@@ -162,9 +166,11 @@ ScreenManager:
     name: 'main'
     BoxLayout:
         orientation: 'vertical'
+        size_hint: (1, 1)
         
         ScreenManager:
             id: tab_manager
+            size_hint: (1, 1)
             SavedScreen:
                 name: 'saved'
             SearchScreen:
@@ -174,6 +180,8 @@ ScreenManager:
             size_hint_y: None
             height: 60
             padding: [0, 5]
+            size_hint_x: 1
+            orientation: 'horizontal'
             canvas.before:
                 Color:
                     rgba: 1, 1, 1, 1
@@ -190,11 +198,13 @@ ScreenManager:
                 text: 'Мои курсы'
                 state: 'down'
                 on_release: tab_manager.current = 'saved'
+                size_hint_x: 0.5
                 
             NavButton:
                 text: 'Поиск'
                 state: 'normal'
                 on_release: tab_manager.current = 'search'
+                size_hint_x: 0.5
 
 <SavedScreen>:
     on_enter: app.load_saved_courses_ui()
@@ -211,7 +221,7 @@ ScreenManager:
             size_hint_y: None
             height: 40
             halign: 'left'
-            text_size: self.width, None
+            text_size: (self.width, None)
 
         ScrollView:
             GridLayout:
