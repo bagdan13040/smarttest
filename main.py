@@ -107,6 +107,9 @@ INTERESTING_FACTS = [
 
 from kivy.storage.jsonstore import JsonStore
 
+import socket
+import datetime
+
 class CourseStorage:
     def __init__(self, filename='courses.json'):
         self.filename = filename
@@ -344,7 +347,7 @@ ScreenManager:
             text_size: (self.width, None)
 
         Label:
-            text: 'API Ключ OpenRouter (оставьте пустым, если используете сервер):'
+            text: 'API Ключ OpenRouter:'
             color: 0.4, 0.4, 0.4, 1
             font_size: '16sp'
             size_hint_y: None
@@ -366,29 +369,6 @@ ScreenManager:
             foreground_color: 0, 0, 0, 1
             cursor_color: 0.15, 0.55, 0.9, 1
 
-        Label:
-            text: 'Адрес локального сервера (опционально):'
-            color: 0.4, 0.4, 0.4, 1
-            font_size: '16sp'
-            size_hint_y: None
-            height: dp(30)
-            halign: 'left'
-            text_size: (self.width, None)
-
-        TextInput:
-            id: server_url_input
-            hint_text: 'http://192.168.1.X:5000'
-            multiline: False
-            size_hint_y: None
-            height: dp(50)
-            font_size: '16sp'
-            padding: [dp(10), dp(12)]
-            background_normal: ''
-            background_active: ''
-            background_color: 1, 1, 1, 1
-            foreground_color: 0, 0, 0, 1
-            cursor_color: 0.15, 0.55, 0.9, 1
-
         RoundedButton:
             text: 'СОХРАНИТЬ'
             font_size: '18sp'
@@ -399,6 +379,30 @@ ScreenManager:
             bg_color: (0.15, 0.55, 0.9, 1)
             color: 1, 1, 1, 1
             on_release: app.save_settings()
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(40)
+            spacing: dp(10)
+            
+            RoundedButton:
+                text: 'ПРОВЕРИТЬ СЕТЬ'
+                font_size: '14sp'
+                bold: True
+                size_hint_x: 0.5
+                bg_color: (0.5, 0.5, 0.5, 1)
+                color: 1, 1, 1, 1
+                on_release: app.check_connection()
+                
+            Label:
+                id: net_status
+                text: 'Не проверено'
+                color: 0.2, 0.2, 0.2, 1
+                font_size: '14sp'
+                size_hint_x: 0.5
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
 
         Label:
             id: status_label
@@ -1018,19 +1022,16 @@ class MyApp(App):
             # Use .get with default to handle migration if needed, though 'key' was broken so likely not saved
             data = self.settings_store.get('api')
             key = data.get('api_key', data.get('key', ''))
-            server_url = data.get('server_url', '')
             settings_screen.ids.api_key_input.text = key
-            settings_screen.ids.server_url_input.text = server_url
 
     def save_settings(self):
         try:
             main_screen = self.root.get_screen('main')
             settings_screen = main_screen.ids.tab_manager.get_screen('settings')
             key = settings_screen.ids.api_key_input.text.strip()
-            server_url = settings_screen.ids.server_url_input.text.strip()
             
             # Changed 'key' to 'api_key' to avoid conflict with Kivy's internal arguments
-            self.settings_store.put('api', api_key=key, server_url=server_url)
+            self.settings_store.put('api', api_key=key)
             settings_screen.ids.status_label.text = "Настройки сохранены!"
             Clock.schedule_once(lambda dt: setattr(settings_screen.ids.status_label, 'text', ''), 2)
         except Exception as e:
@@ -1042,6 +1043,45 @@ class MyApp(App):
                 settings_screen.ids.status_label.text = f"Ошибка: {err_msg}"
             except:
                 pass
+
+    def check_connection(self):
+        main_screen = self.root.get_screen('main')
+        settings_screen = main_screen.ids.tab_manager.get_screen('settings')
+        settings_screen.ids.net_status.text = "Проверка..."
+        threading.Thread(target=self._check_connection_thread).start()
+
+    def _check_connection_thread(self):
+        status_text = "Ошибка сети"
+        try:
+            # 1. Check DNS/Socket
+            socket.create_connection(("8.8.8.8", 53), timeout=3)
+            status_text = "Сеть: OK"
+            
+            # 2. Check HTTP & Time
+            try:
+                # Using a reliable time API
+                res = requests.get("http://worldtimeapi.org/api/timezone/Etc/UTC", timeout=5)
+                if res.status_code == 200:
+                    data = res.json()
+                    # Extract time HH:MM:SS
+                    time_str = data['datetime'][11:19]
+                    status_text = f"OK (UTC {time_str})"
+            except Exception as e:
+                status_text = "Сеть есть, HTTP нет"
+                print(f"HTTP check failed: {e}")
+                
+        except OSError:
+            status_text = "Нет интернета"
+        
+        Clock.schedule_once(lambda dt: self._update_net_status(status_text))
+
+    def _update_net_status(self, text):
+        try:
+            main_screen = self.root.get_screen('main')
+            settings_screen = main_screen.ids.tab_manager.get_screen('settings')
+            settings_screen.ids.net_status.text = text
+        except:
+            pass
 
     def set_difficulty(self, level):
         self.difficulty = level
@@ -1060,14 +1100,12 @@ class MyApp(App):
     def generate_quiz_thread(self, topic, difficulty):
         # Get API key from settings
         api_key = None
-        server_url = None
         if self.settings_store.exists('api'):
             data = self.settings_store.get('api')
             api_key = data.get('api_key', data.get('key'))
-            server_url = data.get('server_url')
             
         self.log(f"Starting generation for {topic}...")
-        result = generate_quiz(topic, difficulty, api_key=api_key, server_url=server_url)
+        result = generate_quiz(topic, difficulty, api_key=api_key)
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
 
     def on_generation_complete(self, result):
