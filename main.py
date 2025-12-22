@@ -137,6 +137,8 @@ class CourseStorage:
         return self.courses
 
 KV = """
+#:import dp kivy.metrics.dp
+
 ScreenManager:
     MainScreen:
     LoadingScreen:
@@ -236,40 +238,40 @@ ScreenManager:
 <SearchScreen>:
     BoxLayout:
         orientation: 'vertical'
-        padding: [12, 8, 12, 8]
-        spacing: 8
+        padding: [dp(12), dp(8), dp(12), dp(8)]
+        spacing: dp(8)
 
         BoxLayout:
-            padding: [16, 8, 16, 16]
-            spacing: 10
+            padding: [dp(16), dp(8), dp(16), dp(16)]
+            spacing: dp(10)
             canvas.before:
                 Color:
                     rgba: (0.95, 0.93, 0.90, 1)
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [20]
+                    radius: [dp(20)]
             orientation: 'vertical'
             size_hint_y: None
-            height: 320
+            height: dp(320)
             Label:
                 text: 'Добро пожаловать! Введите тему для теста:'
                 color: 0.15, 0.55, 0.9, 1
                 font_size: '18sp'
                 halign: 'center'
                 valign: 'middle'
-                text_size: self.width - 24, None
+                text_size: self.width - dp(24), None
                 size_hint_y: None
-                height: 60
+                height: dp(60)
 
             TextInput:
                 id: topic_input
                 hint_text: 'Например: Космос'
                 multiline: False
                 size_hint_y: None
-                height: 50
+                height: dp(50)
                 font_size: '18sp'
-                padding: [10, 12]
+                padding: [dp(10), dp(12)]
                 background_normal: ''
                 background_active: ''
                 background_color: 1, 1, 1, 1
@@ -282,12 +284,12 @@ ScreenManager:
                 color: 0.5, 0.5, 0.5, 1
                 font_size: '14sp'
                 size_hint_y: None
-                height: 20
+                height: dp(20)
 
             BoxLayout:
                 size_hint_y: None
-                height: 40
-                spacing: 10
+                height: dp(40)
+                spacing: dp(10)
                 DifficultyButton:
                     text: 'Легкий'
                     state: 'down'
@@ -301,14 +303,14 @@ ScreenManager:
 
             Widget:
                 size_hint_y: None
-                height: 10
+                height: dp(10)
 
             RoundedButton:
                 text: 'НАЧАТЬ ТЕСТ'
                 font_size: '20sp'
                 bold: True
                 size_hint: None, None
-                size: 280, 60
+                size: dp(280), dp(60)
                 pos_hint: {'center_x': 0.5}
                 on_release: app.start_generation()
 
@@ -342,7 +344,7 @@ ScreenManager:
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [12]
+                        radius: [dp(12)]
 
             Label:
                 text: 'Теория'
@@ -355,8 +357,8 @@ ScreenManager:
 
         BoxLayout:
             size_hint_y: None
-            height: 40
-            spacing: 8
+            height: dp(40)
+            spacing: dp(8)
             Label:
                 text: root.meta_title
                 color: 0.2, 0.2, 0.2, 1
@@ -379,7 +381,7 @@ ScreenManager:
                 text_size: self.width, None
                 halign: 'left'
                 valign: 'top'
-                padding: [10, 10]
+                padding: [dp(10), dp(10)]
                 markup: True
 
         RoundedButton:
@@ -387,7 +389,7 @@ ScreenManager:
             font_size: '18sp'
             bold: True
             size_hint: None, None
-            size: 280, 50
+            size: dp(280), dp(50)
             pos_hint: {'center_x': 0.5}
             bg_color: (0.15, 0.55, 0.9, 1)
             color: 1, 1, 1, 1
@@ -399,13 +401,13 @@ ScreenManager:
     on_leave: root.stop_fact_cycle()
     BoxLayout:
         orientation: 'vertical'
-        padding: 20
-        spacing: 12
+        padding: dp(20)
+        spacing: dp(12)
         Widget:
             size_hint_y: 0.3
         DotSpinner:
             size_hint_y: None
-            height: 40
+            height: dp(40)
             pos_hint: {'center_x': 0.5}
         Label:
             text: 'Генерация курса'
@@ -413,7 +415,7 @@ ScreenManager:
             font_size: '16sp'
             halign: 'center'
             size_hint_y: None
-            height: 30
+            height: dp(30)
         
         Widget:
             size_hint_y: 0.1
@@ -427,7 +429,7 @@ ScreenManager:
             valign: 'top'
             text_size: self.width, None
             size_hint_y: None
-            height: 80
+            height: dp(80)
             italic: True
 
         Widget:
@@ -441,18 +443,18 @@ ScreenManager:
     score: 0
     BoxLayout:
         orientation: 'vertical'
-        padding: 16
-        spacing: 12
+        padding: dp(16)
+        spacing: dp(12)
 
         BoxLayout:
             size_hint_y: None
-            height: 50
-            spacing: 10
+            height: dp(50)
+            spacing: dp(10)
             
             Button:
                 text: '<'
                 size_hint_x: None
-                width: 50
+                width: dp(50)
                 background_normal: ''
                 background_color: (0,0,0,0)
                 color: (0.15, 0.55, 0.9, 1)
@@ -465,7 +467,7 @@ ScreenManager:
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [12]
+                        radius: [dp(12)]
 
             Widget:
 
@@ -475,7 +477,7 @@ ScreenManager:
             color: 0.15, 0.55, 0.9, 1
             font_size: '22sp'
             bold: True
-            text_size: self.width - 30, None
+            text_size: self.width - dp(30), None
             halign: 'center'
             valign: 'middle'
             size_hint_y: 0.35
@@ -484,7 +486,7 @@ ScreenManager:
             text: str(root.question_index + 1) + '/' + str(len(root.questions))
             color: 0.5, 0.5, 0.5, 1
             size_hint_y: None
-            height: 30
+            height: dp(30)
             halign: 'center'
             font_size: '16sp'
 
@@ -493,7 +495,7 @@ ScreenManager:
             cols: 1
             size_hint_y: None
             height: self.minimum_height
-            spacing: 12
+            spacing: dp(12)
 
         Label:
             id: result_label
@@ -509,8 +511,8 @@ ScreenManager:
     name: 'final'
     BoxLayout:
         orientation: 'vertical'
-        padding: 16
-        spacing: 20
+        padding: dp(16)
+        spacing: dp(20)
 
         Label:
             text: 'Результат'
@@ -518,7 +520,7 @@ ScreenManager:
             font_size: '32sp'
             bold: True
             size_hint_y: None
-            height: 60
+            height: dp(60)
 
         Label:
             id: score_label
@@ -535,7 +537,7 @@ ScreenManager:
             font_size: '18sp'
             bold: True
             size_hint: None, None
-            size: 280, 60
+            size: dp(280), dp(60)
             pos_hint: {'center_x': 0.5}
             bg_color: (0.15, 0.55, 0.9, 1)
             color: 1, 1, 1, 1
@@ -546,7 +548,7 @@ ScreenManager:
             font_size: '18sp'
             bold: True
             size_hint: None, None
-            size: 280, 60
+            size: dp(280), dp(60)
             pos_hint: {'center_x': 0.5}
             bg_color: (0.8, 0.3, 0.3, 1)
             color: 1, 1, 1, 1
@@ -560,14 +562,14 @@ class CourseCard(ButtonBehavior, BoxLayout):
     def __init__(self, topic, difficulty, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
-        self.padding = [16, 12]
-        self.spacing = 4
+        self.padding = [dp(16), dp(12)]
+        self.spacing = dp(4)
         self.size_hint_y = None
-        self.height = 90
+        self.height = dp(90)
         
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[16])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
             
         self.bind(pos=self._update_rect, size=self._update_rect)
         
@@ -581,7 +583,7 @@ class CourseCard(ButtonBehavior, BoxLayout):
             valign='middle',
             text_size=(self.width, None),
             size_hint_y=None,
-            height=30
+            height=dp(30)
         ))
         
         # Difficulty Label
@@ -597,14 +599,14 @@ class CourseCard(ButtonBehavior, BoxLayout):
             valign='middle',
             text_size=(self.width, None),
             size_hint_y=None,
-            height=20
+            height=dp(20)
         ))
 
     def _update_rect(self, *args):
         self._rect.pos = self.pos
         self._rect.size = self.size
         for child in self.children:
-            child.text_size = (self.width - 32, None)
+            child.text_size = (self.width - dp(32), None)
 
 
 class RoundedButton(Button):
@@ -619,7 +621,7 @@ class RoundedButton(Button):
         self.valign = 'middle'
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[14])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(bg_color=self._update_color)
 
@@ -645,7 +647,7 @@ class DifficultyButton(ToggleButton):
         self.group = 'difficulty'
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[10])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(10)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(state=self._update_state)
 
@@ -673,17 +675,17 @@ class OptionButton(Button):
         self.valign = 'middle'
         with self.canvas.before:
             self._bg_color = Color(*self.default_color)
-            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[12])
+            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(texture_size=self._update_height)
 
     def _update_rect(self, *args):
         self._bg_rect.pos = self.pos
         self._bg_rect.size = self.size
-        self.text_size = (self.width - 20, None)
+        self.text_size = (self.width - dp(20), None)
 
     def _update_height(self, *args):
-        self.height = max(60, self.texture_size[1] + 30)
+        self.height = max(dp(60), self.texture_size[1] + dp(30))
 
     def set_selected(self, selected: bool):
         self._bg_color.rgba = self.selected_color if selected else self.default_color
@@ -722,8 +724,8 @@ class TheoryScreen(Screen):
 class DotSpinner(BoxLayout):
     """A tiny spinner made of three dots that pulse sequentially."""
     def __init__(self, **kwargs):
-        super().__init__(orientation='horizontal', spacing=8, size_hint=(None, None), **kwargs)
-        self.size = (120, 40)
+        super().__init__(orientation='horizontal', spacing=dp(8), size_hint=(None, None), **kwargs)
+        self.size = (dp(120), dp(40))
         self.dots = [Label(text='•', font_size='28sp', color=(0.6,0.6,0.6,1)) for _ in range(3)]
         for d in self.dots:
             self.add_widget(d)
@@ -914,7 +916,7 @@ class MyApp(App):
         
         courses = self.storage.get_all()
         if not courses:
-            lbl = Label(text="Нет сохраненных курсов", color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=40)
+            lbl = Label(text="Нет сохраненных курсов", color=(0.5, 0.5, 0.5, 1), size_hint_y=None, height=dp(40))
             grid.add_widget(lbl)
             return
 
