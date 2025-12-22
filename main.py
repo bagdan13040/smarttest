@@ -386,6 +386,34 @@ ScreenManager:
             size_hint_y: None
             height: dp(30)
 
+        Label:
+            text: 'Лог ошибок:'
+            color: 0.5, 0.5, 0.5, 1
+            font_size: '14sp'
+            size_hint_y: None
+            height: dp(20)
+
+        ScrollView:
+            size_hint_y: None
+            height: dp(100)
+            canvas.before:
+                Color:
+                    rgba: 0.9, 0.9, 0.9, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Label:
+                id: debug_log
+                text: 'Ожидание событий...'
+                color: 0, 0, 0, 1
+                font_size: '10sp'
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+                halign: 'left'
+                valign: 'top'
+                padding: [dp(5), dp(5)]
+
         Widget:
 
 
@@ -946,7 +974,18 @@ class MyApp(App):
         self.settings_store = JsonStore(settings_path)
         
         root = Builder.load_string(KV)
+        self.log("App started. Storage initialized.")
         return root
+
+    def log(self, message):
+        print(message)
+        try:
+            main_screen = self.root.get_screen('main')
+            settings_screen = main_screen.ids.tab_manager.get_screen('settings')
+            log_label = settings_screen.ids.debug_log
+            log_label.text = f"{message}\n{log_label.text}"[:2000] # Keep last 2000 chars
+        except Exception:
+            pass
 
     def load_settings_ui(self):
         main_screen = self.root.get_screen('main')
@@ -999,11 +1038,17 @@ class MyApp(App):
             data = self.settings_store.get('api')
             api_key = data.get('api_key', data.get('key'))
             
+        self.log(f"Starting generation for {topic}...")
         result = generate_quiz(topic, difficulty, api_key=api_key)
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
 
     def on_generation_complete(self, result):
         if result and 'questions' in result:
+            if 'error' in result and result['error']:
+                self.log(f"Generation error: {result['error']}")
+            else:
+                self.log("Generation successful")
+
             # Save the generated course
             self.storage.save(result)
             

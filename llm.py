@@ -19,9 +19,10 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     if api_key:
         print(f"API Key found: {api_key[:5]}...{api_key[-5:]}")
     else:
-        print("Error: OPENROUTER_API_KEY not found in environment variables or settings")
+        msg = "Error: OPENROUTER_API_KEY not found in environment variables or settings"
+        print(msg)
         print(f"Checked .env at: {env_path}, exists: {env_path.exists()}")
-        return generate_mock_quiz(topic, difficulty)
+        return generate_mock_quiz(topic, difficulty, error=msg)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -56,7 +57,12 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
 
     try:
         print(f"Sending request to {url}...")
-        response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+        except requests.exceptions.SSLError:
+            print("SSLError encountered, retrying with verify=False...")
+            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30, verify=False)
+            
         print(f"Response status: {response.status_code}")
         response.raise_for_status()
         result = response.json()
@@ -72,13 +78,15 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
                 
                 # Валидация структуры
                 if not isinstance(response_data, dict) or 'theory' not in response_data or 'questions' not in response_data:
-                    print("Ошибка: неверная структура JSON")
-                    return generate_mock_quiz(topic, difficulty)
+                    msg = "Ошибка: неверная структура JSON от API"
+                    print(msg)
+                    return generate_mock_quiz(topic, difficulty, error=msg)
                 
                 quiz_data = response_data['questions']
                 if not isinstance(quiz_data, list):
-                    print("Ошибка: questions не список")
-                    return generate_mock_quiz(topic, difficulty)
+                    msg = "Ошибка: questions не список"
+                    print(msg)
+                    return generate_mock_quiz(topic, difficulty, error=msg)
                 
                 valid_quiz = []
                 for item in quiz_data:
@@ -89,8 +97,9 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
                         valid_quiz.append(item)
                 
                 if not valid_quiz:
-                    print("Ошибка: нет валидных вопросов")
-                    return generate_mock_quiz(topic, difficulty)
+                    msg = "Ошибка: нет валидных вопросов в ответе API"
+                    print(msg)
+                    return generate_mock_quiz(topic, difficulty, error=msg)
 
                 # Собираем meta, если модель вернула дополнительные данные
                 meta = response_data.get('meta', {}) if isinstance(response_data, dict) else {}
@@ -103,22 +112,30 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
 
                 return {'theory': response_data['theory'], 'questions': valid_quiz, 'meta': meta}
             except json.JSONDecodeError as e:
-                print(f"Ошибка парсинга JSON: {e}")
+                msg = f"Ошибка парсинга JSON: {e}"
+                print(msg)
                 print(f"Полученный контент: {content}")
-                return generate_mock_quiz(topic, difficulty)
+                return generate_mock_quiz(topic, difficulty, error=msg)
         else:
-            print("Некорректный ответ от API")
-            print(result)
-            return generate_mock_quiz(topic, difficulty)
+            msg = f"Некорректный ответ от API: {result}"
+            print(msg)
+            return generate_mock_quiz(topic, difficulty, error=msg)
             
     except Exception as e:
         print(f"Ошибка при выполнении запроса: {e}")
-        return generate_mock_quiz(topic, difficulty)
+        return generate_mock_quiz(topic, difficulty, error=str(e))
 
-def generate_mock_quiz(topic, difficulty):
+def generate_mock_quiz(topic, difficulty, error=None):
     print("Generating mock quiz due to API failure...")
+    theory_intro = f"[b]Оффлайн режим[/b]\n\n"
+    if error:
+        theory_intro += f"[color=ff0000]Ошибка: {error}[/color]\n\n"
+    
+    theory_intro += f"К сожалению, сервис генерации временно недоступен. Вот пример того, как это должно выглядеть для темы [b]{topic}[/b].\n\n[b]1. Введение[/b]\nЗдесь обычно располагается теоретический материал, который генерирует нейросеть. Он разбит на логические блоки и содержит всю необходимую информацию.\n\n[b]2. Основные понятия[/b]\n• [b]Тема[/b]: {topic}\n• [b]Сложность[/b]: {difficulty}\n\nПопробуйте повторить запрос позже, когда API снова заработает."
+
     return {
-        "theory": f"[b]Оффлайн режим[/b]\n\nК сожалению, сервис генерации временно недоступен. Вот пример того, как это должно выглядеть для темы [b]{topic}[/b].\n\n[b]1. Введение[/b]\nЗдесь обычно располагается теоретический материал, который генерирует нейросеть. Он разбит на логические блоки и содержит всю необходимую информацию.\n\n[b]2. Основные понятия[/b]\n• [b]Тема[/b]: {topic}\n• [b]Сложность[/b]: {difficulty}\n\nПопробуйте повторить запрос позже, когда API снова заработает.",
+        "theory": theory_intro,
+        "error": error, # Return error for logging
         "questions": [
             {
                 "question": f"Это тестовый вопрос по теме {topic}?",
