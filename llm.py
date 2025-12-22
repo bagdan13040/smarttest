@@ -3,7 +3,13 @@ import json
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Explicitly load .env file to avoid stack frame inspection errors on Android
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+else:
+    # Fallback for when .env is not found (e.g. CI/CD without secrets)
+    load_dotenv()
 
 def generate_quiz(topic, difficulty="средний"):
     url = "https://openrouter.ai/api/v1/chat/completions"
