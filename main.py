@@ -1051,14 +1051,17 @@ class MyApp(App):
         threading.Thread(target=self._check_connection_thread).start()
 
     def _check_connection_thread(self):
+        self.log("Checking connection...")
         status_text = "Проверка..."
         try:
             # Try HTTP request directly - this is the most reliable check
             # because it uses system proxies and DNS settings
             try:
+                self.log("Pinging google.com...")
                 res = requests.get("https://www.google.com", timeout=5)
                 if res.status_code == 200:
                     status_text = "Сеть: OK"
+                    self.log("Google reachable. Checking time...")
                     
                     # Try to get time
                     try:
@@ -1067,17 +1070,26 @@ class MyApp(App):
                             data = res_time.json()
                             time_str = data['datetime'][11:19]
                             status_text = f"OK (UTC {time_str})"
-                    except:
+                            self.log(f"Time synced: {time_str}")
+                    except Exception as e:
+                        self.log(f"Time check failed: {e}")
                         pass # Time check failed, but internet is OK
                 else:
                     status_text = f"HTTP {res.status_code}"
-            except requests.exceptions.ConnectionError:
+                    self.log(f"Google returned status: {res.status_code}")
+            except requests.exceptions.ConnectionError as e:
                 status_text = "Ошибка соединения"
+                self.log(f"Connection Error: {e}")
             except requests.exceptions.Timeout:
                 status_text = "Тайм-аут"
+                self.log("Connection timed out")
+            except requests.exceptions.SSLError as e:
+                status_text = "SSL Ошибка"
+                self.log(f"SSL Error: {e}")
                 
         except Exception as e:
             status_text = "Ошибка"
+            self.log(f"General Check Error: {e}")
             print(f"Check failed: {e}")
         
         Clock.schedule_once(lambda dt: self._update_net_status(status_text))
