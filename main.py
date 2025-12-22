@@ -10,6 +10,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.graphics import Color, RoundedRectangle
 from kivy.clock import Clock
+from kivy.utils import platform
 import threading
 import random
 import json
@@ -94,8 +95,16 @@ INTERESTING_FACTS = [
 ]
 
 class CourseStorage:
-    def __init__(self, filename='courses.json'):
-        self.filename = filename
+    def __init__(self):
+        if platform == 'android':
+            from kivy.app import App
+            # On Android, use the app's private storage
+            data_dir = App.get_running_app().user_data_dir
+        else:
+            # On desktop, use the current directory
+            data_dir = os.path.dirname(os.path.abspath(__file__))
+            
+        self.filename = os.path.join(data_dir, 'courses.json')
         self.courses = self.load()
 
     def load(self):

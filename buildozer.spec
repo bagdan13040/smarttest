@@ -18,7 +18,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.include_patterns = .env
 
 # (str) Application versioning (method 1)
-version = 0.2
+version = 0.3
 
 # (list) Application requirements
 requirements = python3,kivy,requests,python-dotenv
@@ -42,7 +42,7 @@ android.sdk = 33
 android.ndk = 25b
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
-android.archs = arm64-v8a
+android.archs = arm64-v8a, armeabi-v7a, x86_64
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
