@@ -339,7 +339,16 @@ def make_request(url, headers, data, timeout=60):
         log(f"urllib failed: {e}")
         log(f"Traceback: {traceback.format_exc()}")
         # If DNS resolution failed, try direct IP fallbacks
-        is_dns_error = isinstance(e, socket.gaierror) or "No address associated with hostname" in str(e)
+        reason = getattr(e, "reason", None)
+        reason_msg = str(reason) if reason else ""
+        is_dns_error = (
+            isinstance(e, socket.gaierror)
+            or isinstance(reason, socket.gaierror)
+            or "No address associated with hostname" in str(e)
+            or "No address associated with hostname" in reason_msg
+        )
+        if reason:
+            log(f"urllib error reason: {reason} ({type(reason)})")
         if is_dns_error:
             log("Detected DNS error, trying direct IP fallbacks for openrouter.ai ...")
             for ip in FALLBACK_OPENROUTER_IPS:
