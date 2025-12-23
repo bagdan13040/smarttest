@@ -18,7 +18,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.include_patterns = .env
 
 # (str) Application versioning (method 1)
-version = 1.3
+version = 1.4
 
 # (list) Application requirements
 # requests + certifi needed for proper SSL/DNS resolution on Android
@@ -59,10 +59,9 @@ android.entrypoint = org.kivy.android.PythonActivity
 p4a.branch = master
 p4a.python_version = 3.10
 
+# Android permissions (MUST be in [app] section!)
+android.permissions = INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE
+
 [buildozer]
 log_level = 2
 warn_on_root = 1
-
-[app:android]
-# (str) Add extra permissions
-android.permissions = INTERNET,ACCESS_NETWORK_STATE,ACCESS_WIFI_STATE,ACCESS_NETWORK_STATE
