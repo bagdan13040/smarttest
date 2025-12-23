@@ -2,6 +2,7 @@ import requests
 import json
 import os
 import sys
+import socket
 from pathlib import Path
 
 try:
@@ -14,9 +15,25 @@ except Exception as e:
     print(f"[LLM] Warning: Could not load dotenv: {e}")
     # On Android, dotenv might not work properly, but we can still use os.environ
 
+def check_internet_connection():
+    """Check if device has internet connectivity by trying to connect to Google DNS"""
+    try:
+        socket.create_connection(("8.8.8.8", 53), timeout=3)
+        return True
+    except OSError:
+        return False
+
 def generate_quiz(topic, difficulty="средний", api_key=None, server_url=None):
     print(f"[LLM] Generating quiz for topic: {topic}, difficulty: {difficulty}")
     print(f"[LLM] Platform: {sys.platform}")
+    
+    # Check internet connection first
+    if not check_internet_connection():
+        msg = "Нет подключения к интернету. Проверьте WiFi или мобильные данные."
+        print(f"[LLM] {msg}")
+        return generate_mock_quiz(topic, difficulty, error=msg)
+    else:
+        print("[LLM] Internet connection: OK")
     
     # Determine URL and headers based on whether we use a proxy server or direct API
     if server_url:
