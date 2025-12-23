@@ -171,7 +171,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     )
     
     data = {
-        "model": "xiaomi/mimo-v2-flash:free",
+        "model": "google/gemma-3-1b-it:free",
         "messages": [
             {
                 "role": "system",
