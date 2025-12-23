@@ -118,18 +118,23 @@ def make_request_kivy(url, headers, data, timeout=60):
     import time
     
     try:
-        body = json.dumps(data)
+        # Ensure UTF-8 encoding for body with non-ASCII characters
+        body = json.dumps(data, ensure_ascii=False).encode('utf-8')
         log(f"Request body prepared, length: {len(body)}")
     except Exception as e:
         log(f"Failed to serialize data: {e}")
         raise
+    
+    # Force Content-Type with charset for proper encoding
+    headers_copy = dict(headers)
+    headers_copy['Content-Type'] = 'application/json; charset=utf-8'
     
     log("Creating UrlRequest...")
     try:
         req = UrlRequest(
             url,
             req_body=body,
-            req_headers=headers,
+            req_headers=headers_copy,
             on_success=_on_success,
             on_failure=_on_failure,
             on_error=_on_error,
@@ -187,17 +192,21 @@ def make_request_urllib(url, headers, data, timeout=60):
     log("SSL context created (no verification)")
     
     try:
-        body = json.dumps(data).encode('utf-8')
+        body = json.dumps(data, ensure_ascii=False).encode('utf-8')
         log(f"Request body prepared, length: {len(body)}")
     except Exception as e:
         log(f"Failed to serialize data: {e}")
         raise
     
+    # Force Content-Type with charset
+    headers_copy = dict(headers)
+    headers_copy['Content-Type'] = 'application/json; charset=utf-8'
+    
     try:
         req = urllib.request.Request(
             url,
             data=body,
-            headers=headers,
+            headers=headers_copy,
             method='POST'
         )
         log("urllib.request.Request created")
@@ -261,7 +270,7 @@ def make_request_socket_ip(url, headers, data, timeout, ip_override):
     if parsed.query:
         path += "?" + parsed.query
 
-    body = json.dumps(data).encode("utf-8")
+    body = json.dumps(data, ensure_ascii=False).encode("utf-8")
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
