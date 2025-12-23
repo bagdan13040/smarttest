@@ -8,6 +8,7 @@ import os
 import sys
 import traceback
 import socket
+import http.client
 from pathlib import Path
 
 # Detailed logging
@@ -249,6 +250,57 @@ def make_request_urllib_ip(url, headers, data, timeout, ip_override):
         log(f"Response via IP {ip_override}, status: {response.status}")
         return json.loads(response.read().decode('utf-8'))
 
+
+def make_request_socket_ip(url, headers, data, timeout, ip_override):
+    """Direct socket HTTPS request to IP with SNI set to openrouter.ai (bypasses DNS)."""
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    host = "openrouter.ai"
+    path = parsed.path or "/"
+    if parsed.query:
+        path += "?" + parsed.query
+
+    body = json.dumps(data).encode("utf-8")
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    log(f"make_request_socket_ip() connecting to {ip_override}:{parsed.port or 443} with SNI={host}")
+
+    sock = socket.create_connection((ip_override, parsed.port or 443), timeout=timeout)
+    ssl_sock = ctx.wrap_socket(sock, server_hostname=host)
+
+    # Build HTTP/1.1 request manually
+    request_headers = {
+        "Host": host,
+        "User-Agent": headers.get("User-Agent", "SmartTest/1.0"),
+        "Content-Type": headers.get("Content-Type", "application/json"),
+        "Authorization": headers.get("Authorization", ""),
+        "HTTP-Referer": headers.get("HTTP-Referer", ""),
+        "X-Title": headers.get("X-Title", ""),
+        "Accept": "application/json",
+        "Content-Length": str(len(body)),
+        "Connection": "close",
+    }
+
+    header_lines = "\r\n".join([f"{k}: {v}" for k, v in request_headers.items() if v])
+    request_bytes = f"POST {path} HTTP/1.1\r\n{header_lines}\r\n\r\n".encode("utf-8") + body
+
+    ssl_sock.sendall(request_bytes)
+
+    response = http.client.HTTPResponse(ssl_sock)
+    response.begin()
+    status = response.status
+    raw = response.read()
+    log(f"Response via socket IP {ip_override}, status: {status}, len={len(raw)}")
+
+    if status >= 400:
+        raise Exception(f"HTTP {status}: {raw[:200]}")
+
+    return json.loads(raw.decode("utf-8"))
+
 def make_request(url, headers, data, timeout=60):
     """
     Make HTTP request using the best available method.
@@ -286,6 +338,12 @@ def make_request(url, headers, data, timeout=60):
                 except Exception as ip_err:
                     errors.append(f"ip {ip}: {ip_err}")
                     log(f"Fallback via {ip} failed: {ip_err}")
+                    log(f"Traceback: {traceback.format_exc()}")
+                try:
+                    return make_request_socket_ip(url, headers, data, timeout, ip_override=ip)
+                except Exception as ip_err:
+                    errors.append(f"socket {ip}: {ip_err}")
+                    log(f"Socket fallback via {ip} failed: {ip_err}")
                     log(f"Traceback: {traceback.format_exc()}")
     
     # All methods failed
