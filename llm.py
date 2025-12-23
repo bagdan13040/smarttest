@@ -68,13 +68,14 @@ def make_request_java(url, headers, data, timeout=60):
     log(f"  URL: {url}")
     
     try:
-        from jnius import autoclass
+        from jnius import autoclass, cast
         log("jnius imported successfully")
     except ImportError as e:
         log(f"Failed to import jnius: {e}")
         raise
     
     URL = autoclass('java.net.URL')
+    HttpURLConnection = autoclass('java.net.HttpURLConnection')
     BufferedReader = autoclass('java.io.BufferedReader')
     InputStreamReader = autoclass('java.io.InputStreamReader')
     DataOutputStream = autoclass('java.io.DataOutputStream')
@@ -84,7 +85,11 @@ def make_request_java(url, headers, data, timeout=60):
     
     try:
         url_obj = URL(url)
-        conn = url_obj.openConnection()
+        # openConnection() returns URLConnection, need to cast to HttpURLConnection
+        url_connection = url_obj.openConnection()
+        conn = cast('java.net.HttpURLConnection', url_connection)
+        log("Connection cast to HttpURLConnection successfully")
+        
         conn.setRequestMethod("POST")
         conn.setDoOutput(True)
         conn.setDoInput(True)
