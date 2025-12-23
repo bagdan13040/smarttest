@@ -286,7 +286,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     )
     
     data = {
-        "model": "deepseek/deepseek-v3.2",
+        "model": "xiaomi/mimo-v2-flash:free",
         "messages": [
             {
                 "role": "system",
