@@ -1,20 +1,27 @@
 import requests
 import json
 import os
-from dotenv import load_dotenv
+import sys
 from pathlib import Path
 
-# Explicitly load .env from the same directory as this script
-env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=env_path)
+try:
+    from dotenv import load_dotenv
+    # Explicitly load .env from the same directory as this script
+    env_path = Path(__file__).parent / '.env'
+    load_dotenv(dotenv_path=env_path)
+    print(f"[LLM] .env loaded from: {env_path}, exists: {env_path.exists()}")
+except Exception as e:
+    print(f"[LLM] Warning: Could not load dotenv: {e}")
+    # On Android, dotenv might not work properly, but we can still use os.environ
 
 def generate_quiz(topic, difficulty="средний", api_key=None, server_url=None):
-    print(f"Generating quiz for topic: {topic}, difficulty: {difficulty}")
+    print(f"[LLM] Generating quiz for topic: {topic}, difficulty: {difficulty}")
+    print(f"[LLM] Platform: {sys.platform}")
     
     # Determine URL and headers based on whether we use a proxy server or direct API
     if server_url:
         url = f"{server_url}/generate_quiz"
-        print(f"Using custom server: {url}")
+        print(f"[LLM] Using custom server: {url}")
         headers = {"Content-Type": "application/json"}
     else:
         url = "https://openrouter.ai/api/v1/chat/completions"
@@ -23,15 +30,18 @@ def generate_quiz(topic, difficulty="средний", api_key=None, server_url=N
             api_key = os.getenv("OPENROUTER_API_KEY")
         
         if api_key:
-            print(f"API Key found: {api_key[:5]}...{api_key[-5:]}")
+            print(f"[LLM] API Key found: {api_key[:10]}...{api_key[-5:] if len(api_key) > 15 else '***'}")
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             }
         else:
             msg = "Error: OPENROUTER_API_KEY not found in environment variables or settings"
-            print(msg)
-            print(f"Checked .env at: {env_path}, exists: {env_path.exists()}")
+            print(f"[LLM] {msg}")
+            env_path = Path(__file__).parent / '.env'
+            print(f"[LLM] Checked .env at: {env_path}, exists: {env_path.exists()}")
+            print(f"[LLM] Current working directory: {os.getcwd()}")
+            print(f"[LLM] __file__ location: {__file__}")
             return generate_mock_quiz(topic, difficulty, error=msg)
 
     # Промпт для генерации JSON
@@ -61,14 +71,31 @@ def generate_quiz(topic, difficulty="средний", api_key=None, server_url=N
     }
 
     try:
-        print(f"Sending request to {url}...")
+        print(f"[LLM] Sending request to {url}...")
+        print(f"[LLM] Headers: {dict((k, '***' if k == 'Authorization' else v) for k, v in headers.items())}")
+        
+        # Try with SSL verification first
         try:
             response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
-        except requests.exceptions.SSLError:
-            print("SSLError encountered, retrying with verify=False...")
-            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30, verify=False)
+            print(f"[LLM] Request successful with SSL verification")
+        except requests.exceptions.SSLError as ssl_err:
+            print(f"[LLM] SSLError: {ssl_err}")
+            print(f"[LLM] Retrying with verify=False...")
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30, verify=False)
+                print(f"[LLM] Request successful without SSL verification")
+            except Exception as retry_err:
+                print(f"[LLM] Retry failed: {retry_err}")
+                raise
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"[LLM] ConnectionError: {conn_err}")
+            print(f"[LLM] Check your internet connection")
+            raise
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"[LLM] Timeout: {timeout_err}")
+            raise
             
-        print(f"Response status: {response.status_code}")
+        print(f"[LLM] Response status: {response.status_code}")
         response.raise_for_status()
         result = response.json()
         
@@ -131,10 +158,16 @@ def generate_quiz(topic, difficulty="средний", api_key=None, server_url=N
         return generate_mock_quiz(topic, difficulty, error=str(e))
 
 def generate_mock_quiz(topic, difficulty, error=None):
-    print("Generating mock quiz due to API failure...")
+    print("[LLM] Generating mock quiz due to API failure...")
+    print(f"[LLM] Error details: {error}")
     theory_intro = f"[b]Оффлайн режим[/b]\n\n"
     if error:
         theory_intro += f"[color=ff0000]Ошибка: {error}[/color]\n\n"
+        if "Failed to resolve" in error or "No address associated" in error:
+            theory_intro += "[color=ff6600]Возможные причины:[/color]\n"
+            theory_intro += "1. Нет подключения к интернету\n"
+            theory_intro += "2. DNS не настроен (для эмулятора)\n"
+            theory_intro += "3. Проверьте браузер в эмуляторе\n\n"
     
     theory_intro += f"К сожалению, сервис генерации временно недоступен. Вот пример того, как это должно выглядеть для темы [b]{topic}[/b].\n\n[b]1. Введение[/b]\nЗдесь обычно располагается теоретический материал, который генерирует нейросеть. Он разбит на логические блоки и содержит всю необходимую информацию.\n\n[b]2. Основные понятия[/b]\n• [b]Тема[/b]: {topic}\n• [b]Сложность[/b]: {difficulty}\n\nПопробуйте повторить запрос позже, когда API снова заработает."
 

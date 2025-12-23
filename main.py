@@ -170,8 +170,6 @@ ScreenManager:
 
 <MainScreen>:
     name: 'main'
-    on_enter: root.start_clock()
-    on_leave: root.stop_clock()
     BoxLayout:
         orientation: 'vertical'
         size_hint: (1, 1)
@@ -192,9 +190,9 @@ ScreenManager:
                 valign: 'middle'
             
             Label:
-                id: clock_label
-                text: '00:00'
-                font_size: '16sp'
+                id: network_status
+                text: '⚡'
+                font_size: '18sp'
                 color: 0.5, 0.5, 0.5, 1
                 halign: 'right'
                 text_size: self.size
@@ -820,16 +818,38 @@ class OptionButton(Button):
 
 
 class MainScreen(Screen):
-    def start_clock(self):
-        self.update_clock()
-        self._clock_event = Clock.schedule_interval(self.update_clock, 1)
+    def on_enter(self):
+        """Запускаем проверку сети при входе на экран"""
+        self.check_network()
+        # Повторяем проверку каждые 30 секунд
+        self._network_check = Clock.schedule_interval(lambda dt: self.check_network(), 30)
     
-    def stop_clock(self):
-        if hasattr(self, '_clock_event'):
-            self._clock_event.cancel()
-
-    def update_clock(self, dt=None):
-        self.ids.clock_label.text = datetime.now().strftime('%H:%M')
+    def on_leave(self):
+        """Останавливаем проверку при уходе с экрана"""
+        if hasattr(self, '_network_check'):
+            self._network_check.cancel()
+    
+    def check_network(self):
+        """Быстрая проверка подключения к сети"""
+        def _check():
+            try:
+                import socket
+                # Проверяем доступность DNS Google (быстро)
+                socket.create_connection(("8.8.8.8", 53), timeout=2)
+                Clock.schedule_once(lambda dt: self._update_network_status(True))
+            except:
+                Clock.schedule_once(lambda dt: self._update_network_status(False))
+        
+        import threading
+        threading.Thread(target=_check, daemon=True).start()
+    
+    def _update_network_status(self, is_online):
+        if is_online:
+            self.ids.network_status.text = '🌐'
+            self.ids.network_status.color = (0.3, 0.7, 0.3, 1)
+        else:
+            self.ids.network_status.text = '📵'
+            self.ids.network_status.color = (0.9, 0.3, 0.3, 1)
 
 class SavedScreen(Screen):
     pass
@@ -1056,8 +1076,22 @@ class MyApp(App):
         self.difficulty = level
 
     def start_generation(self):
-        # Access SearchScreen through MainScreen -> ScreenManager
+        # Check if API key is set
+        api_key = None
+        if self.settings_store.exists('api'):
+            data = self.settings_store.get('api')
+            api_key = data.get('api_key', data.get('key'))
+        
+        if not api_key:
+            self.log("WARNING: No API key configured! Using offline mode.")
+        
+        # Quick network check before generation
         main_screen = self.root.get_screen('main')
+        network_status = main_screen.ids.network_status.text
+        if network_status == '📵':
+            self.log("WARNING: No internet connection detected!")
+        
+        # Access SearchScreen through MainScreen -> ScreenManager
         search_screen = main_screen.ids.tab_manager.get_screen('search')
         topic = search_screen.ids.topic_input.text.strip()
         if not topic:
@@ -1072,9 +1106,17 @@ class MyApp(App):
         if self.settings_store.exists('api'):
             data = self.settings_store.get('api')
             api_key = data.get('api_key', data.get('key'))
-            
+        
         self.log(f"Starting generation for {topic}...")
-        result = generate_quiz(topic, difficulty, api_key=api_key)
+        self.log(f"API key available: {'Yes' if api_key else 'No'}")
+        
+        try:
+            result = generate_quiz(topic, difficulty, api_key=api_key)
+            self.log(f"Generation completed. Has error: {'error' in result}")
+        except Exception as e:
+            self.log(f"Exception during generation: {e}")
+            result = None
+            
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
 
     def on_generation_complete(self, result):
