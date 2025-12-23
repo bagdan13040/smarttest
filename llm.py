@@ -23,6 +23,17 @@ def check_internet_connection():
     except OSError:
         return False
 
+def resolve_dns(hostname):
+    """Manually resolve DNS using socket.getaddrinfo"""
+    try:
+        result = socket.getaddrinfo(hostname, 443, socket.AF_INET, socket.SOCK_STREAM)
+        ip = result[0][4][0]
+        print(f"[LLM] Resolved {hostname} to {ip}")
+        return ip
+    except Exception as e:
+        print(f"[LLM] DNS resolution failed: {e}")
+        return None
+
 def generate_quiz(topic, difficulty="средний", api_key=None, server_url=None):
     print(f"[LLM] Generating quiz for topic: {topic}, difficulty: {difficulty}")
     print(f"[LLM] Platform: {sys.platform}")
@@ -51,6 +62,9 @@ def generate_quiz(topic, difficulty="средний", api_key=None, server_url=N
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
+                "User-Agent": "SmartTest/1.0 (Android)",
+                "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
+                "X-Title": "SmartTest"
             }
         else:
             msg = "Error: OPENROUTER_API_KEY not found in environment variables or settings"
@@ -91,26 +105,24 @@ def generate_quiz(topic, difficulty="средний", api_key=None, server_url=N
         print(f"[LLM] Sending request to {url}...")
         print(f"[LLM] Headers: {dict((k, '***' if k == 'Authorization' else v) for k, v in headers.items())}")
         
+        # On Android, try to resolve DNS manually first
+        if sys.platform.startswith('linux') and 'ANDROID' in os.environ.get('PYTHONPATH', '').upper():
+            print("[LLM] Detected Android, attempting manual DNS resolution...")
+            hostname = url.split('//')[1].split('/')[0]
+            ip = resolve_dns(hostname)
+            if not ip:
+                msg = f"Не удалось разрешить DNS для {hostname}. Попробуйте перезапустить приложение."
+                print(f"[LLM] {msg}")
+                return generate_mock_quiz(topic, difficulty, error=msg)
+        
         # Try with SSL verification first
         try:
             response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
             print(f"[LLM] Request successful with SSL verification")
         except requests.exceptions.SSLError as ssl_err:
-            print(f"[LLM] SSLError: {ssl_err}")
-            print(f"[LLM] Retrying with verify=False...")
-            try:
-                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30, verify=False)
-                print(f"[LLM] Request successful without SSL verification")
-            except Exception as retry_err:
-                print(f"[LLM] Retry failed: {retry_err}")
-                raise
-        except requests.exceptions.ConnectionError as conn_err:
-            print(f"[LLM] ConnectionError: {conn_err}")
-            print(f"[LLM] Check your internet connection")
-            raise
-        except requests.exceptions.Timeout as timeout_err:
-            print(f"[LLM] Timeout: {timeout_err}")
-            raise
+            print(f"[LLM] SSLError: {ssl_err}, retrying with verify=False...")
+            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30, verify=False)
+            print(f"[LLM] Request successful without SSL verification")
             
         print(f"[LLM] Response status: {response.status_code}")
         response.raise_for_status()
