@@ -247,7 +247,8 @@ def make_request_urllib_ip(url, headers, data, timeout, ip_override):
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
-    body = json.dumps(data).encode('utf-8')
+    body = json.dumps(data, ensure_ascii=False).encode('utf-8')
+    headers_ip["Content-Type"] = "application/json; charset=utf-8"
     req = urllib.request.Request(
         request_url,
         data=body,
@@ -285,7 +286,7 @@ def make_request_socket_ip(url, headers, data, timeout, ip_override):
     request_headers = {
         "Host": host,
         "User-Agent": headers.get("User-Agent", "SmartTest/1.0"),
-        "Content-Type": headers.get("Content-Type", "application/json"),
+        "Content-Type": headers.get("Content-Type", "application/json; charset=utf-8"),
         "Authorization": headers.get("Authorization", ""),
         "HTTP-Referer": headers.get("HTTP-Referer", ""),
         "X-Title": headers.get("X-Title", ""),
@@ -385,7 +386,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
         "User-Agent": "SmartTest/1.0",
         "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
         "X-Title": "SmartTest"
