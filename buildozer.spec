@@ -21,7 +21,8 @@ source.include_patterns = .env
 version = 1.1
 
 # (list) Application requirements
-requirements = python3,kivy,python-dotenv,certifi
+# requests + certifi needed for proper SSL/DNS resolution on Android
+requirements = python3,kivy,python-dotenv,certifi,requests,urllib3,charset_normalizer,idna
 
 # (str) Icon of the application
 icon.filename = assets/icon.png
