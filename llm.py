@@ -6,16 +6,44 @@ Falls back to urllib for desktop.
 import json
 import os
 import sys
+import traceback
 from pathlib import Path
+
+# Detailed logging
+def log(msg):
+    """Print log message with prefix"""
+    print(f"[LLM] {msg}")
+    # Also try to write to file for Android debugging
+    try:
+        log_path = Path(__file__).parent / 'llm_debug.log'
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f"{msg}\n")
+    except:
+        pass
+
+log(f"=== LLM Module Loading ===")
+log(f"Python version: {sys.version}")
+log(f"Platform: {sys.platform}")
+log(f"Current directory: {os.getcwd()}")
+log(f"__file__: {__file__}")
 
 # Try to load environment variables
 try:
     from dotenv import load_dotenv
     env_path = Path(__file__).parent / '.env'
     load_dotenv(dotenv_path=env_path)
-    print(f"[LLM] .env loaded from: {env_path}, exists: {env_path.exists()}")
+    log(f".env loaded from: {env_path}, exists: {env_path.exists()}")
 except Exception as e:
-    print(f"[LLM] Warning: Could not load dotenv: {e}")
+    log(f"Warning: Could not load dotenv: {e}")
+
+# Check if running on Android
+IS_ANDROID = False
+try:
+    import android
+    IS_ANDROID = True
+    log("Android module imported - running on Android")
+except ImportError:
+    log("Not running on Android (android module not found)")
 
 # Global variable to store async result
 _async_result = None
@@ -25,28 +53,39 @@ _async_done = False
 def _on_success(req, result):
     """Callback for successful UrlRequest"""
     global _async_result, _async_done
-    print(f"[LLM] UrlRequest success, status: {req.resp_status}")
+    log(f"UrlRequest SUCCESS!")
+    log(f"  Status: {req.resp_status}")
+    log(f"  Headers: {req.resp_headers}")
+    log(f"  Result type: {type(result)}")
+    log(f"  Result preview: {str(result)[:500]}")
     _async_result = result
     _async_done = True
 
 def _on_failure(req, result):
     """Callback for failed UrlRequest"""
     global _async_error, _async_done
-    print(f"[LLM] UrlRequest failure: {result}")
-    _async_error = f"Request failed: {result}"
+    log(f"UrlRequest FAILURE!")
+    log(f"  Status: {req.resp_status}")
+    log(f"  Result: {result}")
+    _async_error = f"HTTP {req.resp_status}: {result}"
     _async_done = True
 
 def _on_error(req, error):
     """Callback for UrlRequest error"""
     global _async_error, _async_done
-    print(f"[LLM] UrlRequest error: {error}")
+    log(f"UrlRequest ERROR!")
+    log(f"  Error type: {type(error)}")
+    log(f"  Error: {error}")
+    log(f"  Traceback: {traceback.format_exc()}")
     _async_error = str(error)
     _async_done = True
 
 def _on_progress(req, current, total):
     """Callback for UrlRequest progress"""
     if total > 0:
-        print(f"[LLM] Progress: {current}/{total} bytes")
+        log(f"Progress: {current}/{total} bytes ({100*current//total}%)")
+    else:
+        log(f"Progress: {current} bytes (total unknown)")
 
 def make_request_kivy(url, headers, data, timeout=60):
     """Make HTTP request using Kivy's UrlRequest (Android compatible)"""
@@ -55,101 +94,176 @@ def make_request_kivy(url, headers, data, timeout=60):
     _async_error = None
     _async_done = False
     
-    from kivy.network.urlrequest import UrlRequest
+    log(f"make_request_kivy() starting...")
+    log(f"  URL: {url}")
+    log(f"  Timeout: {timeout}")
+    log(f"  Data keys: {list(data.keys()) if isinstance(data, dict) else 'not a dict'}")
+    
+    try:
+        from kivy.network.urlrequest import UrlRequest
+        log("UrlRequest imported successfully")
+    except Exception as e:
+        log(f"Failed to import UrlRequest: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
+        raise
+    
     import time
     
-    print(f"[LLM] Using Kivy UrlRequest for: {url}")
+    try:
+        body = json.dumps(data)
+        log(f"Request body prepared, length: {len(body)}")
+    except Exception as e:
+        log(f"Failed to serialize data: {e}")
+        raise
     
-    req = UrlRequest(
-        url,
-        req_body=json.dumps(data),
-        req_headers=headers,
-        on_success=_on_success,
-        on_failure=_on_failure,
-        on_error=_on_error,
-        on_progress=_on_progress,
-        timeout=timeout,
-        method='POST'
-    )
+    log("Creating UrlRequest...")
+    try:
+        req = UrlRequest(
+            url,
+            req_body=body,
+            req_headers=headers,
+            on_success=_on_success,
+            on_failure=_on_failure,
+            on_error=_on_error,
+            on_progress=_on_progress,
+            timeout=timeout,
+            method='POST'
+        )
+        log(f"UrlRequest created: {req}")
+    except Exception as e:
+        log(f"Failed to create UrlRequest: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
+        raise
     
     # Wait for request to complete (with timeout)
+    log("Waiting for request to complete...")
     start_time = time.time()
+    check_count = 0
     while not _async_done:
         time.sleep(0.1)
-        if time.time() - start_time > timeout:
+        check_count += 1
+        elapsed = time.time() - start_time
+        if check_count % 50 == 0:  # Log every 5 seconds
+            log(f"  Still waiting... {elapsed:.1f}s elapsed")
+        if elapsed > timeout:
+            log(f"Request timeout after {elapsed:.1f}s")
             _async_error = "Request timeout"
             break
     
+    log(f"Request completed in {time.time() - start_time:.1f}s")
+    
     if _async_error:
+        log(f"Request failed with error: {_async_error}")
         raise Exception(_async_error)
     
+    log(f"Returning result: {type(_async_result)}")
     return _async_result
 
 def make_request_urllib(url, headers, data, timeout=60):
     """Make HTTP request using urllib (standard library fallback)"""
-    import urllib.request
-    import ssl
+    log(f"make_request_urllib() starting...")
+    log(f"  URL: {url}")
     
-    print(f"[LLM] Using urllib for: {url}")
+    try:
+        import urllib.request
+        import ssl
+        log("urllib.request and ssl imported")
+    except Exception as e:
+        log(f"Failed to import urllib/ssl: {e}")
+        raise
     
     # Create SSL context that doesn't verify certificates (for Android compatibility)
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
+    log("SSL context created (no verification)")
     
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode('utf-8'),
-        headers=headers,
-        method='POST'
-    )
+    try:
+        body = json.dumps(data).encode('utf-8')
+        log(f"Request body prepared, length: {len(body)}")
+    except Exception as e:
+        log(f"Failed to serialize data: {e}")
+        raise
     
-    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
-        return json.loads(response.read().decode('utf-8'))
+    try:
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers=headers,
+            method='POST'
+        )
+        log("urllib.request.Request created")
+    except Exception as e:
+        log(f"Failed to create Request: {e}")
+        raise
+    
+    try:
+        log("Opening URL...")
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+            log(f"Response received, status: {response.status}")
+            result = json.loads(response.read().decode('utf-8'))
+            log(f"Response parsed successfully")
+            return result
+    except Exception as e:
+        log(f"urlopen failed: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
+        raise
 
 def make_request(url, headers, data, timeout=60):
     """
     Make HTTP request using the best available method.
     Priority: Kivy UrlRequest (Android) -> urllib (fallback)
     """
+    log(f"make_request() starting...")
     errors = []
     
     # Try Kivy UrlRequest first (best for Android)
+    log("Attempting Kivy UrlRequest...")
     try:
         return make_request_kivy(url, headers, data, timeout)
-    except ImportError:
-        print("[LLM] Kivy UrlRequest not available")
+    except ImportError as e:
+        log(f"Kivy UrlRequest not available: {e}")
     except Exception as e:
         errors.append(f"Kivy: {e}")
-        print(f"[LLM] Kivy UrlRequest failed: {e}")
+        log(f"Kivy UrlRequest failed: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
     
     # Try urllib (standard library, should always work)
+    log("Attempting urllib...")
     try:
         return make_request_urllib(url, headers, data, timeout)
     except Exception as e:
         errors.append(f"urllib: {e}")
-        print(f"[LLM] urllib failed: {e}")
+        log(f"urllib failed: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
     
     # All methods failed
-    raise Exception(f"Все методы HTTP не сработали: {'; '.join(errors)}")
+    error_msg = f"Все методы HTTP не сработали: {'; '.join(errors)}"
+    log(error_msg)
+    raise Exception(error_msg)
 
 def generate_quiz(topic, difficulty="средний", api_key=None):
     """Generate a quiz using OpenRouter API"""
-    print(f"[LLM] Generating quiz for topic: {topic}, difficulty: {difficulty}")
-    print(f"[LLM] Platform: {sys.platform}")
+    log(f"=== generate_quiz() starting ===")
+    log(f"  Topic: {topic}")
+    log(f"  Difficulty: {difficulty}")
+    log(f"  API key provided: {api_key is not None}")
+    log(f"  Platform: {sys.platform}")
+    log(f"  IS_ANDROID: {IS_ANDROID}")
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
     # Get API key
     if not api_key:
         api_key = os.getenv("OPENROUTER_API_KEY")
+        log(f"API key from env: {api_key is not None}")
     
     if not api_key:
         msg = "API ключ не найден. Введите ключ в настройках."
-        print(f"[LLM] {msg}")
+        log(msg)
         return generate_mock_quiz(topic, difficulty, error=msg)
     
-    print(f"[LLM] API Key: {api_key[:10]}...{api_key[-5:]}")
+    log(f"Using API Key: {api_key[:10]}...{api_key[-5:]}")
     
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -158,6 +272,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
         "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
         "X-Title": "SmartTest"
     }
+    log(f"Headers prepared: {list(headers.keys())}")
     
     prompt = (
         f"Тема: '{topic}'. Сложность: '{difficulty}'. "
@@ -171,7 +286,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     )
     
     data = {
-        "model": "google/gemma-3-1b-it:free",
+        "model": "allenai/olmo-3.1-32b-think:free",
         "messages": [
             {
                 "role": "system",
@@ -183,24 +298,32 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
             }
         ]
     }
+    log(f"Model: {data['model']}")
     
     try:
-        print(f"[LLM] Sending request...")
+        log(f"Sending request to OpenRouter...")
         result = make_request(url, headers, data, timeout=60)
-        print(f"[LLM] Got response")
+        log(f"Got response from OpenRouter")
+        log(f"Response keys: {list(result.keys()) if isinstance(result, dict) else 'not a dict'}")
         
         if 'choices' in result and len(result['choices']) > 0:
             content = result['choices'][0]['message']['content']
+            log(f"Content length: {len(content)}")
+            log(f"Content preview: {content[:200]}...")
             content = content.replace('```json', '').replace('```', '').strip()
             
             try:
+                log("Parsing JSON response...")
                 response_data = json.loads(content)
                 
                 if not isinstance(response_data, dict) or 'theory' not in response_data or 'questions' not in response_data:
+                    log(f"Invalid response structure: {list(response_data.keys()) if isinstance(response_data, dict) else 'not a dict'}")
                     return generate_mock_quiz(topic, difficulty, error="Неверная структура ответа API")
                 
                 quiz_data = response_data['questions']
+                log(f"Quiz has {len(quiz_data) if isinstance(quiz_data, list) else 0} questions")
                 if not isinstance(quiz_data, list):
+                    log(f"questions is not a list: {type(quiz_data)}")
                     return generate_mock_quiz(topic, difficulty, error="questions не список")
                 
                 valid_quiz = []
@@ -212,26 +335,34 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
                         valid_quiz.append(item)
                 
                 if not valid_quiz:
+                    log("No valid questions found after validation")
                     return generate_mock_quiz(topic, difficulty, error="Нет валидных вопросов")
                 
+                log(f"Validated {len(valid_quiz)} questions")
                 meta = response_data.get('meta', {})
                 meta['topic'] = topic
                 meta['difficulty'] = difficulty
                 
+                log("Quiz generated successfully!")
                 return {'theory': response_data['theory'], 'questions': valid_quiz, 'meta': meta}
                 
             except json.JSONDecodeError as e:
+                log(f"JSON parse error: {e}")
+                log(f"Content was: {content[:500]}...")
                 return generate_mock_quiz(topic, difficulty, error=f"Ошибка парсинга JSON: {e}")
         else:
+            log(f"No choices in response: {result}")
             return generate_mock_quiz(topic, difficulty, error=f"Некорректный ответ API")
             
     except Exception as e:
-        print(f"[LLM] Error: {e}")
+        log(f"Exception in generate_quiz: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
         return generate_mock_quiz(topic, difficulty, error=str(e))
 
 def generate_mock_quiz(topic, difficulty, error=None):
     """Generate a mock quiz when API is unavailable"""
-    print(f"[LLM] Generating mock quiz. Error: {error}")
+    log(f"generate_mock_quiz() called")
+    log(f"  Error: {error}")
     
     theory = f"[b]Оффлайн режим[/b]\n\n"
     if error:

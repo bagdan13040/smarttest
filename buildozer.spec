@@ -18,7 +18,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.include_patterns = .env
 
 # (str) Application versioning (method 1)
-version = 1.0
+version = 1.1
 
 # (list) Application requirements
 requirements = python3,kivy,python-dotenv,certifi

@@ -1,26 +1,63 @@
-from kivy.app import App
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.lang import Builder
-from kivy.core.window import Window
-from kivy.properties import NumericProperty, StringProperty, ListProperty
-from kivy.uix.button import Button
-from kivy.uix.togglebutton import ToggleButton
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.graphics import Color, RoundedRectangle
-from kivy.clock import Clock
-from kivy.metrics import dp
+print("[MAIN] === Application Starting ===")
+import sys
+import traceback as tb_module
+print(f"[MAIN] Python version: {sys.version}")
+print(f"[MAIN] Platform: {sys.platform}")
+
+# Check for Android
+IS_ANDROID = False
+try:
+    import android
+    IS_ANDROID = True
+    print("[MAIN] Running on Android")
+except ImportError:
+    print("[MAIN] Not running on Android")
+
+print("[MAIN] Importing kivy modules...")
+try:
+    from kivy.app import App
+    print("[MAIN] kivy.app imported")
+    from kivy.uix.screenmanager import ScreenManager, Screen
+    print("[MAIN] screenmanager imported")
+    from kivy.lang import Builder
+    print("[MAIN] Builder imported")
+    from kivy.core.window import Window
+    print("[MAIN] Window imported")
+    from kivy.properties import NumericProperty, StringProperty, ListProperty
+    print("[MAIN] properties imported")
+    from kivy.uix.button import Button
+    from kivy.uix.togglebutton import ToggleButton
+    from kivy.uix.behaviors import ButtonBehavior
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.label import Label
+    print("[MAIN] UI widgets imported")
+    from kivy.graphics import Color, RoundedRectangle
+    print("[MAIN] graphics imported")
+    from kivy.clock import Clock
+    print("[MAIN] Clock imported")
+    from kivy.metrics import dp
+    print("[MAIN] metrics imported")
+except Exception as e:
+    print(f"[MAIN] ERROR importing kivy: {e}")
+    print(f"[MAIN] Traceback: {tb_module.format_exc()}")
+    raise
+
+print("[MAIN] Importing standard modules...")
 from datetime import datetime
 import threading
 import random
 import json
 import os
 import uuid
+print("[MAIN] Standard modules imported")
+
+print("[MAIN] Importing llm module...")
 try:
     from llm import generate_quiz
+    print("[MAIN] llm module imported successfully")
 except Exception as e:
-    print(f"Error importing llm: {e}")
+    print(f"[MAIN] Error importing llm: {e}")
+    print(f"[MAIN] Traceback: {tb_module.format_exc()}")
     # Fallback if llm fails to load (e.g. missing requests)
     def generate_quiz(topic, difficulty):
         return {
@@ -1017,20 +1054,39 @@ class MyApp(App):
     difficulty = StringProperty('легкий')
 
     def build(self):
-        # Use the application's private data directory for storage
-        data_dir = self.user_data_dir
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+        print("[MAIN] MyApp.build() starting...")
+        try:
+            # Use the application's private data directory for storage
+            data_dir = self.user_data_dir
+            print(f"[MAIN] user_data_dir: {data_dir}")
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
+                print(f"[MAIN] Created data_dir")
 
-        courses_path = os.path.join(data_dir, 'courses.json')
-        settings_path = os.path.join(data_dir, 'settings.json')
-        
-        self.storage = CourseStorage(filename=courses_path)
-        self.settings_store = JsonStore(settings_path)
-        
-        root = Builder.load_string(KV)
-        self.log("App started. Storage initialized.")
-        return root
+            courses_path = os.path.join(data_dir, 'courses.json')
+            settings_path = os.path.join(data_dir, 'settings.json')
+            print(f"[MAIN] courses_path: {courses_path}")
+            print(f"[MAIN] settings_path: {settings_path}")
+            
+            print("[MAIN] Creating CourseStorage...")
+            self.storage = CourseStorage(filename=courses_path)
+            print("[MAIN] CourseStorage created")
+            
+            print("[MAIN] Creating JsonStore...")
+            self.settings_store = JsonStore(settings_path)
+            print("[MAIN] JsonStore created")
+            
+            print("[MAIN] Loading KV string...")
+            root = Builder.load_string(KV)
+            print("[MAIN] KV loaded successfully")
+            
+            self.log("App started. Storage initialized.")
+            print("[MAIN] build() complete!")
+            return root
+        except Exception as e:
+            print(f"[MAIN] ERROR in build(): {e}")
+            print(f"[MAIN] Traceback: {tb_module.format_exc()}")
+            raise
 
     def log(self, message):
         print(message)
@@ -1192,4 +1248,12 @@ class MyApp(App):
 
 
 if __name__ == '__main__':
-    MyApp().run()
+    print("[MAIN] === Starting MyApp ===")
+    try:
+        app = MyApp()
+        print("[MAIN] MyApp instance created")
+        app.run()
+    except Exception as e:
+        print(f"[MAIN] FATAL ERROR: {e}")
+        print(f"[MAIN] Traceback: {tb_module.format_exc()}")
+        raise
