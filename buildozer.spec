@@ -18,11 +18,11 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.include_patterns = .env
 
 # (str) Application versioning (method 1)
-version = 1.1
+version = 1.2
 
 # (list) Application requirements
 # requests + certifi needed for proper SSL/DNS resolution on Android
-requirements = python3,kivy,python-dotenv,certifi,requests,urllib3,charset_normalizer,idna
+requirements = python3,kivy,python-dotenv,certifi,pyjnius
 
 # (str) Icon of the application
 icon.filename = assets/icon.png

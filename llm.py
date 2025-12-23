@@ -58,6 +58,88 @@ FALLBACK_OPENROUTER_IPS = [
     "172.67.213.90",
 ]
 
+
+def make_request_java(url, headers, data, timeout=60):
+    """Make HTTP request using Java HttpURLConnection (Android native, best compatibility)."""
+    if not IS_ANDROID:
+        raise ImportError("Java HTTP client only available on Android")
+    
+    log("make_request_java() starting...")
+    log(f"  URL: {url}")
+    
+    try:
+        from jnius import autoclass
+        log("jnius imported successfully")
+    except ImportError as e:
+        log(f"Failed to import jnius: {e}")
+        raise
+    
+    URL = autoclass('java.net.URL')
+    BufferedReader = autoclass('java.io.BufferedReader')
+    InputStreamReader = autoclass('java.io.InputStreamReader')
+    DataOutputStream = autoclass('java.io.DataOutputStream')
+    
+    body = json.dumps(data, ensure_ascii=False).encode('utf-8')
+    log(f"Request body prepared, length: {len(body)}")
+    
+    try:
+        url_obj = URL(url)
+        conn = url_obj.openConnection()
+        conn.setRequestMethod("POST")
+        conn.setDoOutput(True)
+        conn.setDoInput(True)
+        conn.setConnectTimeout(timeout * 1000)
+        conn.setReadTimeout(timeout * 1000)
+        
+        # Set headers
+        for key, value in headers.items():
+            conn.setRequestProperty(key, value)
+        
+        log("Sending request via Java HttpURLConnection...")
+        
+        # Write body
+        out_stream = DataOutputStream(conn.getOutputStream())
+        out_stream.write(body)
+        out_stream.flush()
+        out_stream.close()
+        
+        # Read response
+        response_code = conn.getResponseCode()
+        log(f"Java response code: {response_code}")
+        
+        if response_code >= 400:
+            # Read error stream
+            error_stream = conn.getErrorStream()
+            if error_stream:
+                reader = BufferedReader(InputStreamReader(error_stream, "UTF-8"))
+                response_text = ""
+                line = reader.readLine()
+                while line is not None:
+                    response_text += line
+                    line = reader.readLine()
+                reader.close()
+                raise Exception(f"HTTP {response_code}: {response_text[:500]}")
+            else:
+                raise Exception(f"HTTP {response_code}")
+        
+        # Read success stream
+        reader = BufferedReader(InputStreamReader(conn.getInputStream(), "UTF-8"))
+        response_text = ""
+        line = reader.readLine()
+        while line is not None:
+            response_text += line
+            line = reader.readLine()
+        reader.close()
+        conn.disconnect()
+        
+        log(f"Java response length: {len(response_text)}")
+        return json.loads(response_text)
+        
+    except Exception as e:
+        log(f"Java HTTP request failed: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
+        raise
+
 def _on_success(req, result):
     """Callback for successful UrlRequest"""
     global _async_result, _async_done
@@ -263,6 +345,7 @@ def make_request_urllib_ip(url, headers, data, timeout, ip_override):
 
 def make_request_socket_ip(url, headers, data, timeout, ip_override):
     """Direct socket HTTPS request to IP with SNI set to openrouter.ai (bypasses DNS)."""
+    import ssl as ssl_module
     from urllib.parse import urlparse
 
     parsed = urlparse(url)
@@ -273,9 +356,9 @@ def make_request_socket_ip(url, headers, data, timeout, ip_override):
 
     body = json.dumps(data, ensure_ascii=False).encode("utf-8")
 
-    ctx = ssl.create_default_context()
+    ctx = ssl_module.create_default_context()
     ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    ctx.verify_mode = ssl_module.CERT_NONE
 
     log(f"make_request_socket_ip() connecting to {ip_override}:{parsed.port or 443} with SNI={host}")
 
@@ -314,12 +397,24 @@ def make_request_socket_ip(url, headers, data, timeout, ip_override):
 def make_request(url, headers, data, timeout=60):
     """
     Make HTTP request using the best available method.
-    Priority: Kivy UrlRequest (Android) -> urllib (fallback)
+    Priority on Android: Java HttpURLConnection -> Kivy UrlRequest -> urllib -> IP fallbacks
     """
     log(f"make_request() starting...")
     errors = []
     
-    # Try Kivy UrlRequest first (best for Android)
+    # On Android, try Java HttpURLConnection FIRST (uses native Android network stack)
+    if IS_ANDROID:
+        log("Attempting Java HttpURLConnection (Android native)...")
+        try:
+            return make_request_java(url, headers, data, timeout)
+        except ImportError as e:
+            log(f"Java HTTP not available: {e}")
+        except Exception as e:
+            errors.append(f"Java: {e}")
+            log(f"Java HTTP failed: {e}")
+            log(f"Traceback: {traceback.format_exc()}")
+    
+    # Try Kivy UrlRequest
     log("Attempting Kivy UrlRequest...")
     try:
         return make_request_kivy(url, headers, data, timeout)
