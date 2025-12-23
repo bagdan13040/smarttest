@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import traceback
+import socket
 from pathlib import Path
 
 # Detailed logging
@@ -49,6 +50,12 @@ except ImportError:
 _async_result = None
 _async_error = None
 _async_done = False
+
+# Fallback IPs for openrouter.ai (to bypass DNS issues on some networks)
+FALLBACK_OPENROUTER_IPS = [
+    "104.21.74.91",
+    "172.67.213.90",
+]
 
 def _on_success(req, result):
     """Callback for successful UrlRequest"""
@@ -209,6 +216,39 @@ def make_request_urllib(url, headers, data, timeout=60):
         log(f"Traceback: {traceback.format_exc()}")
         raise
 
+
+def make_request_urllib_ip(url, headers, data, timeout, ip_override):
+    """Attempt urllib request using a direct IP with Host header for openrouter.ai"""
+    import urllib.request
+    import ssl
+
+    log(f"make_request_urllib_ip() starting with IP {ip_override}...")
+
+    # Clone headers and force Host
+    headers_ip = dict(headers)
+    headers_ip["Host"] = "openrouter.ai"
+
+    # Build URL with IP
+    request_url = url.replace("https://openrouter.ai", f"https://{ip_override}")
+    log(f"  Request URL: {request_url}")
+
+    # SSL context without verification (SNI will be IP, so we must disable checks)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    body = json.dumps(data).encode('utf-8')
+    req = urllib.request.Request(
+        request_url,
+        data=body,
+        headers=headers_ip,
+        method='POST'
+    )
+
+    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+        log(f"Response via IP {ip_override}, status: {response.status}")
+        return json.loads(response.read().decode('utf-8'))
+
 def make_request(url, headers, data, timeout=60):
     """
     Make HTTP request using the best available method.
@@ -236,6 +276,17 @@ def make_request(url, headers, data, timeout=60):
         errors.append(f"urllib: {e}")
         log(f"urllib failed: {e}")
         log(f"Traceback: {traceback.format_exc()}")
+        # If DNS resolution failed, try direct IP fallbacks
+        is_dns_error = isinstance(e, socket.gaierror) or "No address associated with hostname" in str(e)
+        if is_dns_error:
+            log("Detected DNS error, trying direct IP fallbacks for openrouter.ai ...")
+            for ip in FALLBACK_OPENROUTER_IPS:
+                try:
+                    return make_request_urllib_ip(url, headers, data, timeout, ip_override=ip)
+                except Exception as ip_err:
+                    errors.append(f"ip {ip}: {ip_err}")
+                    log(f"Fallback via {ip} failed: {ip_err}")
+                    log(f"Traceback: {traceback.format_exc()}")
     
     # All methods failed
     error_msg = f"Все методы HTTP не сработали: {'; '.join(errors)}"
