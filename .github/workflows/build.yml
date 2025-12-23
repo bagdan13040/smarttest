@@ -32,19 +32,15 @@ jobs:
         touch .env
         if [ ! -z "$OPENROUTER_API_KEY" ]; then echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> .env; fi
 
-    - name: Build with Buildozer (with retry)
-      uses: nick-fields/retry@v2
+    - name: Build with Buildozer
+      uses: ArtemSBulgakov/buildozer-action@v1
+      env:
+        USER: root
+        PIP_BREAK_SYSTEM_PACKAGES: 1
+        LDFLAGS: "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
       with:
-        timeout_minutes: 60
-        max_attempts: 3
-        retry_wait_seconds: 30
-        command: |
-          docker run --rm -v "$PWD":/home/user/hostcwd \
-            -e USER=root \
-            -e PIP_BREAK_SYSTEM_PACKAGES=1 \
-            -e LDFLAGS="-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384" \
-            kivy/buildozer:latest \
-            bash -c "cd /home/user/hostcwd && buildozer android debug"
+        command: buildozer android debug
+        buildozer_version: stable
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
