@@ -18,10 +18,10 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.include_patterns = .env
 
 # (str) Application versioning (method 1)
-version = 0.8
+version = 1.0
 
 # (list) Application requirements
-requirements = python3,kivy,requests,python-dotenv,urllib3,charset_normalizer,idna,certifi
+requirements = python3,kivy,python-dotenv,certifi
 
 # (str) Icon of the application
 icon.filename = assets/icon.png
