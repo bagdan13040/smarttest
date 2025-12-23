@@ -286,7 +286,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     )
     
     data = {
-        "model": "allenai/olmo-3.1-32b-think:free",
+        "model": "deepseek/deepseek-chat-v3-0324:free",
         "messages": [
             {
                 "role": "system",
