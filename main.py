@@ -263,23 +263,26 @@ ScreenManager:
                     points: [self.x, self.y + self.height, self.x + self.width, self.y + self.height]
                     width: 1
             
-            NavButton:
-                text: 'Мои курсы'
-                state: 'down'
-                on_release: tab_manager.current = 'saved'
-                size_hint_x: 0.33
-                
-            NavButton:
-                text: 'Поиск'
-                state: 'normal'
-                on_release: tab_manager.current = 'search'
-                size_hint_x: 0.33
+<NavButton:
+    text: '★\nКурсы'
+    font_size: '16sp'
+    state: 'down'
+    on_release: tab_manager.current = 'saved'
+    size_hint_x: 0.33
+    
+<NavButton:
+    text: '+\nПоиск'
+    font_size: '16sp'
+    state: 'normal'
+    on_release: tab_manager.current = 'search'
+    size_hint_x: 0.33
 
-            NavButton:
-                text: 'Настройки'
-                state: 'normal'
-                on_release: tab_manager.current = 'settings'
-                size_hint_x: 0.33
+<NavButton:
+    text: '≡\nЕщё'
+    font_size: '16sp'
+    state: 'normal'
+    on_release: tab_manager.current = 'settings'
+    size_hint_x: 0.33
 
 <SavedScreen>:
     on_enter: app.load_saved_courses_ui()
@@ -403,40 +406,6 @@ ScreenManager:
             height: dp(40)
             halign: 'left'
             text_size: (self.width, None)
-
-        # Weather widget for Ufa
-        BoxLayout:
-            orientation: 'vertical'
-            size_hint_y: None
-            height: dp(90)
-            padding: [dp(12), dp(8)]
-            canvas.before:
-                Color:
-                    rgba: 0.2, 0.6, 0.9, 0.15
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [dp(12)]
-            Label:
-                text: '🌤 Погода в Уфе'
-                color: 0.15, 0.55, 0.9, 1
-                font_size: '16sp'
-                bold: True
-                size_hint_y: None
-                height: dp(25)
-                halign: 'left'
-                text_size: (self.width, None)
-            Label:
-                id: weather_label
-                text: 'Загрузка...'
-                color: 0.3, 0.3, 0.3, 1
-                font_size: '14sp'
-                size_hint_y: None
-                height: dp(50)
-                halign: 'left'
-                valign: 'top'
-                text_size: (self.width, None)
-                markup: True
 
         Label:
             text: 'API Ключ OpenRouter:'
@@ -765,7 +734,7 @@ class CourseCard(ButtonBehavior, BoxLayout):
         
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
             
         self.bind(pos=self._update_rect, size=self._update_rect)
         
@@ -817,7 +786,7 @@ class RoundedButton(Button):
         self.valign = 'middle'
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(25)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(bg_color=self._update_color)
 
@@ -843,7 +812,7 @@ class DifficultyButton(ToggleButton):
         self.group = 'difficulty'
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(10)])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(state=self._update_state)
 
@@ -871,7 +840,7 @@ class OptionButton(Button):
         self.valign = 'middle'
         with self.canvas.before:
             self._bg_color = Color(*self.default_color)
-            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
+            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(texture_size=self._update_height)
 
@@ -1141,76 +1110,6 @@ class MyApp(App):
             data = self.settings_store.get('api')
             key = data.get('api_key', data.get('key', ''))
             settings_screen.ids.api_key_input.text = key
-        
-        # Load weather for Ufa
-        threading.Thread(target=self._load_weather, daemon=True).start()
-    
-    def _load_weather(self):
-        """Fetch weather for Ufa from wttr.in API"""
-        try:
-            import urllib.request
-            import ssl
-            
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            
-            url = "https://wttr.in/Ufa?format=j1"
-            req = urllib.request.Request(url, headers={'User-Agent': 'SmartTest/1.0'})
-            
-            with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
-                data = json.loads(response.read().decode('utf-8'))
-            
-            current = data.get('current_condition', [{}])[0]
-            temp_c = current.get('temp_C', '?')
-            feels_like = current.get('FeelsLikeC', '?')
-            humidity = current.get('humidity', '?')
-            wind_kmph = current.get('windspeedKmph', '?')
-            desc = current.get('weatherDesc', [{}])[0].get('value', 'Нет данных')
-            
-            # Weather icons based on description
-            desc_lower = desc.lower()
-            if 'sun' in desc_lower or 'clear' in desc_lower:
-                icon = '☀️'
-            elif 'cloud' in desc_lower or 'overcast' in desc_lower:
-                icon = '☁️'
-            elif 'rain' in desc_lower:
-                icon = '🌧️'
-            elif 'snow' in desc_lower:
-                icon = '❄️'
-            elif 'fog' in desc_lower or 'mist' in desc_lower:
-                icon = '🌫️'
-            else:
-                icon = '🌤️'
-            
-            # Get forecast for tomorrow
-            weather_list = data.get('weather', [])
-            tomorrow_text = ''
-            if len(weather_list) > 1:
-                tomorrow = weather_list[1]
-                t_max = tomorrow.get('maxtempC', '?')
-                t_min = tomorrow.get('mintempC', '?')
-                tomorrow_text = f"\nЗавтра: {t_min}°..{t_max}°C"
-            
-            weather_text = (
-                f"{icon} [b]{temp_c}°C[/b] (ощущ. {feels_like}°C)\n"
-                f"{desc}\n"
-                f"💧 {humidity}%  💨 {wind_kmph} км/ч{tomorrow_text}"
-            )
-            
-            Clock.schedule_once(lambda dt: self._update_weather_ui(weather_text))
-            
-        except Exception as e:
-            error_text = f"[color=ff6666]Не удалось загрузить: {str(e)[:40]}[/color]"
-            Clock.schedule_once(lambda dt: self._update_weather_ui(error_text))
-    
-    def _update_weather_ui(self, text):
-        try:
-            main_screen = self.root.get_screen('main')
-            settings_screen = main_screen.ids.tab_manager.get_screen('settings')
-            settings_screen.ids.weather_label.text = text
-        except Exception as e:
-            print(f"Error updating weather UI: {e}")
 
     def save_settings(self):
         try:
