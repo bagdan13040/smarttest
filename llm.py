@@ -1,5 +1,4 @@
-"""
-LLM module for quiz generation using OpenRouter API.
+"""LLM module for quiz generation using OpenRouter API.
 Uses kivy.network.urlrequest for Android compatibility.
 Falls back to urllib for desktop.
 """
@@ -57,6 +56,112 @@ FALLBACK_OPENROUTER_IPS = [
     "104.21.74.91",
     "172.67.213.90",
 ]
+
+
+def get_course_topics(memory_file='course_topics.json'):
+    """Загрузить список тем курса из памяти (файла)."""
+    path = Path(memory_file)
+    if not path.exists():
+        return []
+    try:
+        with path.open('r', encoding='utf-8') as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return data
+    except Exception as e:
+        log(f"Не удалось прочитать память тем: {e}")
+    return []
+
+
+def save_course_topic(topic, memory_file='course_topics.json'):
+    """Сохранить новую тему в память курса (файл)."""
+    if not topic or not isinstance(topic, str):
+        return
+    normalized = topic.strip()
+    if not normalized:
+        return
+    path = Path(memory_file)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        log(f"Не удалось создать директорию памяти тем: {e}")
+    topics = get_course_topics(memory_file)
+    if normalized not in topics:
+        topics.append(normalized)
+        try:
+            with path.open('w', encoding='utf-8') as f:
+                json.dump(topics, f, ensure_ascii=False, indent=2)
+            log(f"Тема сохранена в памяти: {normalized}")
+        except Exception as e:
+            log(f"Не удалось сохранить память тем: {e}")
+
+
+def generate_next_topics(prev_material, n=5, api_key=None, memory_file='course_topics.json'):
+    """Генерировать новые темы для изучения на основе предыдущего материала и сохранить их в память."""
+    if not prev_material:
+        prev_material = "Ранее изученный материал недоступен."
+    material_snippet = prev_material[:1500]
+    log(f"=== generate_next_topics() starting ===")
+    log(f"  Material snippet length: {len(material_snippet)}")
+    log(f"  API key provided: {api_key is not None}")
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    if not api_key:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        log(f"API key from env: {api_key is not None}")
+    if not api_key:
+        log("API ключ не найден. Генерация тем пропущена.")
+        return []
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": "SmartTest/1.0",
+        "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
+        "X-Title": "SmartTest"
+    }
+    prompt = (
+        f"На основе следующего учебного материала предложи {n} новых тем для дальнейшего изучения. "
+        "Верни только JSON массив строк, где каждая строка — это краткое название темы. "
+        "Материал:\n" + material_snippet
+    )
+    data = {
+        "model": "xiaomi/mimo-v2-flash:free",
+        "messages": [
+            {"role": "system", "content": "Ты — API, возвращающий только сырой JSON массив строк (тем)."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+    try:
+        log(f"Sending request to OpenRouter for next topics...")
+        result = make_request(url, headers, data, timeout=60)
+        log(f"Got response from OpenRouter (next topics)")
+        if 'choices' in result and len(result['choices']) > 0:
+            content = result['choices'][0]['message']['content']
+            log(f"Content preview: {content[:200]}...")
+            content = content.replace('```json', '').replace('```', '').strip()
+            try:
+                topics_raw = json.loads(content)
+                if isinstance(topics_raw, list):
+                    topics = []
+                    for item in topics_raw:
+                        topic_name = str(item).strip()
+                        if topic_name and topic_name not in topics:
+                            topics.append(topic_name)
+                            save_course_topic(topic_name, memory_file)
+                    log(f"Saved {len(topics)} topics to memory.")
+                    return topics
+                else:
+                    log("Ответ не является списком тем.")
+                    return []
+            except json.JSONDecodeError as e:
+                log(f"Ошибка парсинга JSON тем: {e}")
+                return []
+        else:
+            log(f"Некорректный ответ API (next topics): {result}")
+            return []
+    except Exception as e:
+        log(f"Exception in generate_next_topics: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
+        return []
 
 
 def make_request_java(url, headers, data, timeout=60):

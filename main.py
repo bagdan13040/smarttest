@@ -53,7 +53,7 @@ print("[MAIN] Standard modules imported")
 
 print("[MAIN] Importing llm module...")
 try:
-    from llm import generate_quiz
+    from llm import generate_quiz, generate_next_topics, get_course_topics
     print("[MAIN] llm module imported successfully")
 except Exception as e:
     print(f"[MAIN] Error importing llm: {e}")
@@ -66,6 +66,12 @@ except Exception as e:
                 {"question": "Ошибка", "options": ["Ок", "Ок", "Ок", "Ок"], "answer": 0}
             ]
         }
+
+    def generate_next_topics(prev_material, n=5, api_key=None, memory_file='course_topics.json'):
+        return []
+
+    def get_course_topics(memory_file='course_topics.json'):
+        return []
 
 # Warm light background
 Window.clearcolor = (0.95, 0.93, 0.90, 1)
@@ -160,14 +166,47 @@ class CourseStorage:
             return []
 
     def save(self, course):
-        # Check if course already exists (by topic and difficulty) to avoid duplicates
-        for c in self.courses:
-            if c.get('meta', {}).get('topic') == course.get('meta', {}).get('topic') and \
-               c.get('meta', {}).get('difficulty') == course.get('meta', {}).get('difficulty'):
+        topic = course.get('meta', {}).get('topic', '')
+        difficulty = course.get('meta', {}).get('difficulty', '')
+        for idx, c in enumerate(self.courses):
+            if c.get('meta', {}).get('topic') == topic and \
+               c.get('meta', {}).get('difficulty') == difficulty:
+                self.courses[idx] = course
+                self.courses.insert(0, self.courses.pop(idx))
+                self._write()
                 return
-        
+
         self.courses.insert(0, course)
         self._write()
+
+    def find(self, topic, difficulty):
+        for c in self.courses:
+            meta = c.get('meta', {})
+            if meta.get('topic') == topic and meta.get('difficulty') == difficulty:
+                return c
+        return None
+
+    def update_entry(self, topic, difficulty, updater):
+        for idx, c in enumerate(self.courses):
+            meta = c.get('meta', {})
+            if meta.get('topic') == topic and meta.get('difficulty') == difficulty:
+                updater(c)
+                self.courses.insert(0, self.courses.pop(idx))
+                self._write()
+                return c
+        return None
+
+    def delete(self, topic, difficulty):
+        removed = False
+        for idx, c in enumerate(self.courses):
+            meta = c.get('meta', {})
+            if meta.get('topic') == topic and meta.get('difficulty') == difficulty:
+                self.courses.pop(idx)
+                removed = True
+                break
+        if removed:
+            self._write()
+        return removed
 
     def _write(self):
         with open(self.filename, 'w', encoding='utf-8') as f:
@@ -264,22 +303,19 @@ ScreenManager:
                     width: 1
             
             NavButton:
-                text: '★\\nКурсы'
-                font_size: '14sp'
+                text: 'Мои курсы'
                 state: 'down'
                 on_release: tab_manager.current = 'saved'
                 size_hint_x: 0.33
                 
             NavButton:
-                text: '+\\nПоиск'
-                font_size: '14sp'
+                text: 'Поиск'
                 state: 'normal'
                 on_release: tab_manager.current = 'search'
                 size_hint_x: 0.33
 
             NavButton:
-                text: '≡\\nЕщё'
-                font_size: '14sp'
+                text: 'Настройки'
                 state: 'normal'
                 on_release: tab_manager.current = 'settings'
                 size_hint_x: 0.33
@@ -406,6 +442,40 @@ ScreenManager:
             height: dp(40)
             halign: 'left'
             text_size: (self.width, None)
+
+        # Weather widget for Ufa
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(90)
+            padding: [dp(12), dp(8)]
+            canvas.before:
+                Color:
+                    rgba: 0.2, 0.6, 0.9, 0.15
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(12)]
+            Label:
+                text: '🌤 Погода в Уфе'
+                color: 0.15, 0.55, 0.9, 1
+                font_size: '16sp'
+                bold: True
+                size_hint_y: None
+                height: dp(25)
+                halign: 'left'
+                text_size: (self.width, None)
+            Label:
+                id: weather_label
+                text: 'Загрузка...'
+                color: 0.3, 0.3, 0.3, 1
+                font_size: '14sp'
+                size_hint_y: None
+                height: dp(50)
+                halign: 'left'
+                valign: 'top'
+                text_size: (self.width, None)
+                markup: True
 
         Label:
             text: 'API Ключ OpenRouter:'
@@ -549,16 +619,33 @@ ScreenManager:
                 padding: [dp(10), dp(10)]
                 markup: True
 
-        RoundedButton:
-            text: 'ПЕРЕЙТИ К ТЕСТУ'
-            font_size: '18sp'
-            bold: True
-            size_hint: None, None
-            size: dp(280), dp(50)
-            pos_hint: {'center_x': 0.5}
-            bg_color: (0.15, 0.55, 0.9, 1)
-            color: 1, 1, 1, 1
-            on_release: app.start_quiz_from_theory()
+        BoxLayout:
+            size_hint_y: None
+            height: dp(52)
+            spacing: dp(10)
+            padding: [0, 0, 0, 0]
+            Widget:
+            RoundedButton:
+                id: theory_delete_button
+                text: 'Удалить курс'
+                font_size: '18sp'
+                size_hint: None, None
+                size: dp(280), dp(50)
+                bg_color: (0.8, 0.35, 0.35, 1)
+                color: 1, 1, 1, 1
+                disabled: True
+                opacity: 0.4
+                on_release: app.delete_current_course()
+            RoundedButton:
+                text: 'ПЕРЕЙТИ К ТЕСТУ'
+                font_size: '18sp'
+                bold: True
+                size_hint: None, None
+                size: dp(280), dp(50)
+                bg_color: (0.15, 0.55, 0.9, 1)
+                color: 1, 1, 1, 1
+                on_release: app.start_quiz_from_theory()
+            Widget:
 
 <LoadingScreen>:
     name: 'loading'
@@ -697,6 +784,72 @@ ScreenManager:
             size_hint_y: 1
             text_size: self.width, None
 
+        Label:
+            id: note_label
+            text: root.note_text
+            color: 0.35, 0.35, 0.35, 1
+            font_size: '15sp'
+            halign: 'left'
+            valign: 'top'
+            size_hint_y: None
+            height: dp(60)
+            text_size: self.width, None
+
+        RoundedButton:
+            id: delete_button
+            text: 'Удалить курс из истории'
+            font_size: '18sp'
+            bold: True
+            size_hint: None, None
+            size: dp(280), dp(60)
+            pos_hint: {'center_x': 0.5}
+            bg_color: (0.8, 0.35, 0.35, 1)
+            color: 1, 1, 1, 1
+            on_release: app.delete_current_course()
+
+        Label:
+            text: 'Объяснения ошибок'
+            color: 0.3, 0.3, 0.3, 1
+            font_size: '18sp'
+            halign: 'left'
+            size_hint_y: None
+            height: dp(26)
+            text_size: self.width, None
+
+        ScrollView:
+            size_hint_y: None
+            height: dp(180)
+            bar_width: 0
+            GridLayout:
+                id: error_explanations_box
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(6)
+                padding: [0, 0]
+
+        Label:
+            text: 'Темы для углубления'
+            color: 0.3, 0.3, 0.3, 1
+            font_size: '18sp'
+            halign: 'left'
+            size_hint_y: None
+            height: dp(26)
+            text_size: self.width, None
+
+        ScrollView:
+            size_hint_y: None
+            height: dp(220)
+            bar_width: 0
+            do_scroll_x: False
+            GridLayout:
+                id: followup_topics_box
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(8)
+                padding: [0, 0]
+
         RoundedButton:
             text: 'ПРОЙТИ ЕЩЁ РАЗ'
             font_size: '18sp'
@@ -734,7 +887,7 @@ class CourseCard(ButtonBehavior, BoxLayout):
         
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
             
         self.bind(pos=self._update_rect, size=self._update_rect)
         
@@ -786,7 +939,7 @@ class RoundedButton(Button):
         self.valign = 'middle'
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(25)])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(bg_color=self._update_color)
 
@@ -812,7 +965,7 @@ class DifficultyButton(ToggleButton):
         self.group = 'difficulty'
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
+            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(10)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(state=self._update_state)
 
@@ -840,7 +993,7 @@ class OptionButton(Button):
         self.valign = 'middle'
         with self.canvas.before:
             self._bg_color = Color(*self.default_color)
-            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
+            self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(texture_size=self._update_height)
 
@@ -950,6 +1103,7 @@ class QuizScreen(Screen):
     score = NumericProperty(0)
     result_text = StringProperty('')
     current_question_text = StringProperty('')
+    wrong_explanations = []
 
     questions = [
         {"question": "Какого цвета небо?",
@@ -1011,6 +1165,17 @@ class QuizScreen(Screen):
             self.score += 1
         else:
             self.result_text = f"Неправильно. Верно: {q['options'][q['answer']]}"
+            options = q.get('options', [])
+            selected_text = options[self.selected] if 0 <= self.selected < len(options) else ''
+            correct_text = options[q['answer']] if 0 <= q['answer'] < len(options) else ''
+            explanation = {
+                'question': q.get('question', 'Вопрос'),
+                'selected': selected_text,
+                'correct': correct_text
+            }
+            if not hasattr(self, 'wrong_explanations'):
+                self.wrong_explanations = []
+            self.wrong_explanations.append(explanation)
         # автоматический переход без задержки
         self.auto_next_question()
 
@@ -1033,8 +1198,10 @@ class QuizScreen(Screen):
             self.finish_test()
 
     def finish_test(self):
-        final = self.manager.get_screen('final')
-        final.set_score(self.score, len(self.questions))
+        percent = 0
+        if self.questions:
+            percent = int(round(100 * self.score / len(self.questions)))
+        App.get_running_app().handle_quiz_result(self.score, len(self.questions), percent, self.get_error_explanations())
         self.manager.current = 'final'
 
     def reset_quiz(self):
@@ -1043,14 +1210,81 @@ class QuizScreen(Screen):
         self.selected = None
         self.highlighted_button = None
         self.answered = False
+        self.wrong_explanations = []
         self.load_question()
+
+    def get_error_explanations(self):
+        return getattr(self, 'wrong_explanations', [])
 
 
 class FinalScreen(Screen):
     score_text = StringProperty('')
+    note_text = StringProperty('')
 
-    def set_score(self, score, total):
-        self.score_text = f'Вы набрали {score} из {total}.'
+    def set_score(self, score, total, percent):
+        self.score_text = f'{percent}% ({score}/{total} правильных ответов)'
+
+    def set_quick_note(self, text):
+        self.note_text = text or 'Быстрая шпаргалка пока отсутствует.'
+
+    def set_followup_topics(self, topics, loading=False):
+        layout = self.ids.followup_topics_box
+        layout.clear_widgets()
+        if not topics:
+            message = 'Темы подготавливаются...' if loading else 'Темы пока отсутствуют.'
+            layout.add_widget(Label(
+                text=message,
+                halign='center',
+                valign='middle',
+                color=(0.4, 0.4, 0.4, 1),
+                size_hint_y=None,
+                height=dp(30)
+            ))
+            return
+        for topic in topics:
+            btn = RoundedButton(
+                text=topic,
+                size_hint_y=None,
+                height=dp(48),
+                bg_color=(0.2, 0.55, 0.35, 1),
+                font_size='16sp'
+            )
+            btn.bind(on_release=lambda inst, t=topic: App.get_running_app().start_followup_topic(t))
+            layout.add_widget(btn)
+
+    def set_error_explanations(self, errors):
+        layout = self.ids.error_explanations_box
+        layout.clear_widgets()
+        if not errors:
+            layout.add_widget(Label(
+                text='Ошибок нет. Отличная работа! 🎉',
+                halign='left',
+                valign='middle',
+                color=(0.15, 0.55, 0.9, 1),
+                size_hint_y=None,
+                height=dp(30)
+            ))
+            return
+        for item in errors:
+            question = item.get('question', 'Вопрос')
+            correct = item.get('correct', '')
+            selected = item.get('selected', '')
+            label = Label(
+                text=f"[b]{question}[/b]\nПравильный ответ: {correct}\nВаш ответ: {selected}",
+                markup=True,
+                halign='left',
+                valign='top',
+                color=(0.2, 0.2, 0.2, 1),
+                size_hint_y=None,
+                height=dp(60),
+                text_size=(self.width - dp(40), None)
+            )
+            layout.add_widget(label)
+
+    def set_delete_enabled(self, enabled):
+        btn = self.ids.delete_button
+        btn.disabled = not enabled
+        btn.opacity = 1 if enabled else 0.4
 
 
 class MyApp(App):
@@ -1068,11 +1302,15 @@ class MyApp(App):
 
             courses_path = os.path.join(data_dir, 'courses.json')
             settings_path = os.path.join(data_dir, 'settings.json')
+            self.topic_memory_file = os.path.join(data_dir, 'course_topics.json')
+            self._last_api_key = None
+            self.last_material = ''
             print(f"[MAIN] courses_path: {courses_path}")
             print(f"[MAIN] settings_path: {settings_path}")
             
             print("[MAIN] Creating CourseStorage...")
             self.storage = CourseStorage(filename=courses_path)
+            self._last_saved_meta = None
             print("[MAIN] CourseStorage created")
             
             print("[MAIN] Creating JsonStore...")
@@ -1085,6 +1323,7 @@ class MyApp(App):
             
             self.log("App started. Storage initialized.")
             print("[MAIN] build() complete!")
+            self.update_theory_delete_button(root)
             return root
         except Exception as e:
             print(f"[MAIN] ERROR in build(): {e}")
@@ -1110,6 +1349,73 @@ class MyApp(App):
             data = self.settings_store.get('api')
             key = data.get('api_key', data.get('key', ''))
             settings_screen.ids.api_key_input.text = key
+    
+    def _load_weather(self):
+        """Fetch weather for Ufa from wttr.in API"""
+        try:
+            import urllib.request
+            import ssl
+            
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            
+            url = "https://wttr.in/Ufa?format=j1"
+            req = urllib.request.Request(url, headers={'User-Agent': 'SmartTest/1.0'})
+            
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
+                data = json.loads(response.read().decode('utf-8'))
+            
+            current = data.get('current_condition', [{}])[0]
+            temp_c = current.get('temp_C', '?')
+            feels_like = current.get('FeelsLikeC', '?')
+            humidity = current.get('humidity', '?')
+            wind_kmph = current.get('windspeedKmph', '?')
+            desc = current.get('weatherDesc', [{}])[0].get('value', 'Нет данных')
+            
+            # Weather icons based on description
+            desc_lower = desc.lower()
+            if 'sun' in desc_lower or 'clear' in desc_lower:
+                icon = '☀️'
+            elif 'cloud' in desc_lower or 'overcast' in desc_lower:
+                icon = '☁️'
+            elif 'rain' in desc_lower:
+                icon = '🌧️'
+            elif 'snow' in desc_lower:
+                icon = '❄️'
+            elif 'fog' in desc_lower or 'mist' in desc_lower:
+                icon = '🌫️'
+            else:
+                icon = '🌤️'
+            
+            # Get forecast for tomorrow
+            weather_list = data.get('weather', [])
+            tomorrow_text = ''
+            if len(weather_list) > 1:
+                tomorrow = weather_list[1]
+                t_max = tomorrow.get('maxtempC', '?')
+                t_min = tomorrow.get('mintempC', '?')
+                tomorrow_text = f"\nЗавтра: {t_min}°..{t_max}°C"
+            
+            weather_text = (
+                f"{icon} [b]{temp_c}°C[/b] (ощущ. {feels_like}°C)\n"
+                f"{desc}\n"
+                f"💧 {humidity}%  💨 {wind_kmph} км/ч{tomorrow_text}"
+            )
+            
+            Clock.schedule_once(lambda dt: self._update_weather_ui(weather_text))
+            
+        except Exception as e:
+            error_text = f"[color=ff6666]Не удалось загрузить: {str(e)[:40]}[/color]"
+            Clock.schedule_once(lambda dt: self._update_weather_ui(error_text))
+    
+    def _update_weather_ui(self, text):
+        try:
+            main_screen = self.root.get_screen('main')
+            settings_screen = main_screen.ids.tab_manager.get_screen('settings')
+            settings_screen.ids.weather_label.text = text
+        except Exception as e:
+            print(f"Error updating weather UI: {e}")
 
     def save_settings(self):
         try:
@@ -1140,6 +1446,7 @@ class MyApp(App):
         if self.settings_store.exists('api'):
             data = self.settings_store.get('api')
             api_key = data.get('api_key', data.get('key'))
+        self._last_api_key = api_key
         
         if not api_key:
             self.log("WARNING: No API key configured! Using offline mode.")
@@ -1191,15 +1498,21 @@ class MyApp(App):
             # Сохраняем вопросы в QuizScreen
             quiz_screen = self.root.get_screen('quiz')
             quiz_screen.questions = result['questions']
+            meta = result.get('meta', {})
+            topic = meta.get('topic', '')
+            difficulty = meta.get('difficulty', '')
+            theory_text = result.get('theory', '') or ''
+            snippet = ' '.join(theory_text.splitlines())[:200]
+            if snippet:
+                meta.setdefault('notes', {})['quick_hint'] = snippet
+            self._last_saved_meta = meta
+            self.last_material = f"Тема: {topic}\n\n{theory_text}" if topic else theory_text
+            self.update_theory_delete_button()
             
             # Если есть теория, показываем её
             if 'theory' in result and result['theory']:
                 theory_screen = self.root.get_screen('theory')
                 theory_screen.theory_content = result['theory']
-                # meta: topic/difficulty/notes
-                meta = result.get('meta', {})
-                topic = meta.get('topic', '')
-                difficulty = meta.get('difficulty', '')
                 theory_screen.meta_title = f"Тема: {topic}" if topic else ''
                 theory_screen.meta_sub = f"Сложность: {difficulty}" if difficulty else ''
                 self.root.current = 'theory'
@@ -1210,6 +1523,109 @@ class MyApp(App):
             # Если ошибка, возвращаемся на главную и показываем уведомление (в консоль пока)
             print("Failed to generate quiz")
             self.root.current = 'main'
+
+    def prepare_followup_topics(self):
+        if not getattr(self, 'root', None):
+            return
+        final_screen = self.root.get_screen('final')
+        final_screen.set_followup_topics([], loading=True)
+        prev_material = self.last_material or ''
+
+        def worker():
+            topics = generate_next_topics(prev_material, n=5, api_key=self._last_api_key, memory_file=self.topic_memory_file)
+            if not topics:
+                topics = get_course_topics(self.topic_memory_file)
+            if topics:
+                topics = topics[:5]
+            Clock.schedule_once(lambda dt: final_screen.set_followup_topics(topics, loading=False))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def handle_quiz_result(self, score, total, percent, errors=None):
+        final_screen = self.root.get_screen('final')
+        final_screen.set_score(score, total, percent)
+        note_text = ''
+        topic = ''
+        difficulty = self.difficulty
+        if self._last_saved_meta:
+            topic = self._last_saved_meta.get('topic', '')
+            difficulty = self._last_saved_meta.get('difficulty', difficulty)
+            note_text = self._last_saved_meta.get('notes', {}).get('quick_hint', '')
+        if not note_text:
+            note_text = (self.last_material or '').strip()[:240]
+        final_screen.set_quick_note(note_text)
+        final_screen.set_error_explanations(errors or [])
+
+        if topic and difficulty:
+            timestamp = datetime.utcnow().isoformat()
+            entry = {
+                'timestamp': timestamp,
+                'score_percent': percent,
+                'difficulty': difficulty
+            }
+            def updater(course):
+                meta = course.setdefault('meta', {})
+                history = meta.setdefault('history', [])
+                history.insert(0, entry)
+                meta.setdefault('notes', {})['quick_hint'] = note_text
+            self.storage.update_entry(topic, difficulty, updater)
+
+        self.adjust_difficulty(percent)
+        final_screen.set_delete_enabled(bool(topic))
+        self.prepare_followup_topics()
+
+    def update_theory_delete_button(self, root=None):
+        screen_root = root or getattr(self, 'root', None)
+        if not screen_root:
+            return
+        try:
+            button = screen_root.get_screen('theory').ids.theory_delete_button
+        except Exception:
+            return
+        enabled = bool(self._last_saved_meta)
+        button.disabled = not enabled
+        button.opacity = 1 if enabled else 0.4
+
+    def adjust_difficulty(self, percent):
+        levels = ['легкий', 'средний', 'эксперт']
+        try:
+            current_idx = levels.index(self.difficulty)
+        except ValueError:
+            current_idx = 0
+
+        if percent >= 80 and current_idx < len(levels) - 1:
+            current_idx += 1
+        elif percent <= 40 and current_idx > 0:
+            current_idx -= 1
+
+        new_level = levels[current_idx]
+        if new_level != self.difficulty:
+            self.log(f"Адаптация сложности: {self.difficulty} → {new_level} (результат {percent}%)")
+            self.difficulty = new_level
+
+    def start_followup_topic(self, topic):
+        main_screen = self.root.get_screen('main')
+        main_screen.ids.tab_manager.current = 'search'
+        search_screen = main_screen.ids.tab_manager.get_screen('search')
+        search_screen.ids.topic_input.text = topic
+        self.root.current = 'loading'
+        threading.Thread(target=self.generate_quiz_thread, args=(topic, self.difficulty)).start()
+
+    def delete_current_course(self):
+        if not self._last_saved_meta:
+            return
+        topic = self._last_saved_meta.get('topic')
+        difficulty = self._last_saved_meta.get('difficulty', '')
+        if not topic:
+            return
+        removed = self.storage.delete(topic, difficulty)
+        if removed:
+            self.log(f"Курс '{topic}' ({difficulty}) удалён из истории.")
+            final_screen = self.root.get_screen('final')
+            final_screen.set_delete_enabled(False)
+            self._last_saved_meta = None
+            self.load_saved_courses_ui()
+            self.update_theory_delete_button()
 
     def load_saved_courses_ui(self):
         main_screen = self.root.get_screen('main')
