@@ -18,7 +18,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.include_patterns = .env
 
 # (str) Application versioning (method 1)
-version = 1.5
+version = 1.6
 
 # (list) Application requirements
 # requests + certifi needed for proper SSL/DNS resolution on Android

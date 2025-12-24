@@ -263,26 +263,26 @@ ScreenManager:
                     points: [self.x, self.y + self.height, self.x + self.width, self.y + self.height]
                     width: 1
             
-<NavButton:
-    text: '★\nКурсы'
-    font_size: '16sp'
-    state: 'down'
-    on_release: tab_manager.current = 'saved'
-    size_hint_x: 0.33
-    
-<NavButton:
-    text: '+\nПоиск'
-    font_size: '16sp'
-    state: 'normal'
-    on_release: tab_manager.current = 'search'
-    size_hint_x: 0.33
+            NavButton:
+                text: '★\\nКурсы'
+                font_size: '14sp'
+                state: 'down'
+                on_release: tab_manager.current = 'saved'
+                size_hint_x: 0.33
+                
+            NavButton:
+                text: '+\\nПоиск'
+                font_size: '14sp'
+                state: 'normal'
+                on_release: tab_manager.current = 'search'
+                size_hint_x: 0.33
 
-<NavButton:
-    text: '≡\nЕщё'
-    font_size: '16sp'
-    state: 'normal'
-    on_release: tab_manager.current = 'settings'
-    size_hint_x: 0.33
+            NavButton:
+                text: '≡\\nЕщё'
+                font_size: '14sp'
+                state: 'normal'
+                on_release: tab_manager.current = 'settings'
+                size_hint_x: 0.33
 
 <SavedScreen>:
     on_enter: app.load_saved_courses_ui()
