@@ -1276,9 +1276,10 @@ class FinalScreen(Screen):
                 valign='top',
                 color=(0.2, 0.2, 0.2, 1),
                 size_hint_y=None,
-                height=dp(60),
-                text_size=(self.width - dp(40), None)
+                height=dp(20)
             )
+            label.bind(width=lambda inst, w: setattr(inst, 'text_size', (w - dp(20), None)))
+            label.bind(texture_size=lambda inst, size: setattr(inst, 'height', size[1] + dp(12)))
             layout.add_widget(label)
 
     def set_delete_enabled(self, enabled):
