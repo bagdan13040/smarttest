@@ -7,35 +7,29 @@ print(f"[MAIN] Platform: {sys.platform}")
 # Check for Android
 IS_ANDROID = False
 try:
-    import android
-    IS_ANDROID = True
-    print("[MAIN] Running on Android")
-except ImportError:
-    print("[MAIN] Not running on Android")
-
-print("[MAIN] Importing kivy modules...")
-try:
+    print("[MAIN] UI widgets imported")
     from kivy.app import App
-    print("[MAIN] kivy.app imported")
-    from kivy.uix.screenmanager import ScreenManager, Screen
-    print("[MAIN] screenmanager imported")
     from kivy.lang import Builder
-    print("[MAIN] Builder imported")
     from kivy.core.window import Window
-    print("[MAIN] Window imported")
-    from kivy.properties import NumericProperty, StringProperty, ListProperty
-    print("[MAIN] properties imported")
+    from kivy.uix.screenmanager import ScreenManager, Screen
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.anchorlayout import AnchorLayout
+    from kivy.uix.gridlayout import GridLayout
+    from kivy.uix.label import Label
+    from kivy.uix.image import Image
+    from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
     from kivy.uix.button import Button
     from kivy.uix.togglebutton import ToggleButton
-    from kivy.uix.behaviors import ButtonBehavior
-    from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.label import Label
-    print("[MAIN] UI widgets imported")
-    from kivy.graphics import Color, RoundedRectangle
-    print("[MAIN] graphics imported")
-    from kivy.clock import Clock
-    print("[MAIN] Clock imported")
+    from kivy.uix.scrollview import ScrollView
+    from kivy.uix.textinput import TextInput
+    from kivy.uix.widget import Widget
     from kivy.metrics import dp
+    from kivy.properties import StringProperty, ListProperty, NumericProperty
+
+    print("[MAIN] graphics imported")
+    from kivy.graphics import Color, RoundedRectangle
+    print("[MAIN] Clock imported")
+    from kivy.clock import Clock
     print("[MAIN] metrics imported")
 except Exception as e:
     print(f"[MAIN] ERROR importing kivy: {e}")
@@ -66,7 +60,6 @@ except Exception as e:
                 {"question": "Ошибка", "options": ["Ок", "Ок", "Ок", "Ок"], "answer": 0}
             ]
         }
-
     def generate_next_topics(prev_material, n=5, api_key=None, memory_file='course_topics.json'):
         return []
 
@@ -76,7 +69,6 @@ except Exception as e:
 # Warm light background
 Window.clearcolor = (0.95, 0.93, 0.90, 1)
 # Window.size = (360, 700) # Removed to allow proper scaling on Android
-
 INTERESTING_FACTS = [
     "Первый компьютерный баг был настоящим мотыльком, застрявшим в реле.",
     "Сердце синего кита весит столько же, сколько автомобиль.",
@@ -86,8 +78,7 @@ INTERESTING_FACTS = [
     "Бананы с ботанической точки зрения являются ягодами, а клубника — нет.",
     "В теле человека достаточно железа, чтобы сделать гвоздь длиной 7 см.",
     "Колибри — единственная птица, способная летать назад.",
-    "ДНК человека и банана совпадают на 50%.",
-    "Самая короткая война в истории длилась 38 минут (между Британией и Занзибаром).",
+    "Самая короткая война в истории длилась 38 минут (между Британией и Занзибаром)",
     "В Австралии кроликов больше, чем людей в Китае.",
     "Алмазы могут гореть, если их нагреть до 720-800 градусов Цельсия.",
     "Вода в горячем состоянии замерзает быстрее, чем в холодном (эффект Мпембы).",
@@ -286,10 +277,9 @@ ScreenManager:
                 
         BoxLayout:
             size_hint_y: None
-            height: dp(80)  # Increased height
-            padding: [0, dp(5)]
-            size_hint_x: 1
-            orientation: 'horizontal'
+            height: dp(64)
+            padding: [dp(12), dp(8), dp(12), dp(8)]
+            spacing: dp(32)
             canvas.before:
                 Color:
                     rgba: 1, 1, 1, 1
@@ -297,28 +287,40 @@ ScreenManager:
                     pos: self.pos
                     size: self.size
                 Color:
-                    rgba: 0.9, 0.9, 0.9, 1
+                    rgba: 0.92, 0.92, 0.92, 1
                 Line:
                     points: [self.x, self.y + self.height, self.x + self.width, self.y + self.height]
                     width: 1
-            
-            NavButton:
-                text: 'Мои курсы'
-                state: 'down'
-                on_release: tab_manager.current = 'saved'
-                size_hint_x: 0.33
-                
-            NavButton:
-                text: 'Поиск'
-                state: 'normal'
-                on_release: tab_manager.current = 'search'
-                size_hint_x: 0.33
 
-            NavButton:
-                text: 'Настройки'
-                state: 'normal'
-                on_release: tab_manager.current = 'settings'
-                size_hint_x: 0.33
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                IconToggleButton:
+                    id: nav_saved
+                    size: dp(34), dp(34)
+                    icon_source: 'assets/icons/free-icon-font-home-3917033.png'
+                    target_screen: 'saved'
+                    group: 'main_nav'
+
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                IconToggleButton:
+                    id: nav_search
+                    size: dp(34), dp(34)
+                    icon_source: 'assets/icons/free-icon-font-search-3917132.png'
+                    target_screen: 'search'
+                    group: 'main_nav'
+
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                IconToggleButton:
+                    id: nav_settings
+                    size: dp(34), dp(34)
+                    icon_source: 'assets/icons/free-icon-font-settings-sliders-3917103.png'
+                    target_screen: 'settings'
+                    group: 'main_nav'
 
 <SavedScreen>:
     on_enter: app.load_saved_courses_ui()
@@ -563,15 +565,11 @@ ScreenManager:
             height: 50
             spacing: 10
             
-            Button:
-                text: '<'
-                size_hint_x: None
-                width: 50
-                background_normal: ''
-                background_color: (0,0,0,0)
-                color: (0.15, 0.55, 0.9, 1)
-                font_size: '24sp'
-                bold: True
+            IconButton:
+                size_hint: None, None
+                size: dp(36), dp(36)
+                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
                 on_release: app.root.current = 'main'
                 canvas.before:
                     Color:
@@ -586,7 +584,7 @@ ScreenManager:
                 color: 0.15, 0.55, 0.9, 1
                 font_size: '24sp'
                 bold: True
-                halign: 'left'
+                halign: 'center'
                 text_size: self.size
                 valign: 'middle'
 
@@ -625,17 +623,6 @@ ScreenManager:
             spacing: dp(10)
             padding: [0, 0, 0, 0]
             Widget:
-            RoundedButton:
-                id: theory_delete_button
-                text: 'Удалить курс'
-                font_size: '18sp'
-                size_hint: None, None
-                size: dp(280), dp(50)
-                bg_color: (0.8, 0.35, 0.35, 1)
-                color: 1, 1, 1, 1
-                disabled: True
-                opacity: 0.4
-                on_release: app.delete_current_course()
             RoundedButton:
                 text: 'ПЕРЕЙТИ К ТЕСТУ'
                 font_size: '18sp'
@@ -703,15 +690,11 @@ ScreenManager:
             height: dp(50)
             spacing: dp(10)
             
-            Button:
-                text: '<'
-                size_hint_x: None
-                width: dp(50)
-                background_normal: ''
-                background_color: (0,0,0,0)
-                color: (0.15, 0.55, 0.9, 1)
-                font_size: '24sp'
-                bold: True
+            IconButton:
+                size_hint: None, None
+                size: dp(36), dp(36)
+                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
                 on_release: app.root.current = 'main'
                 canvas.before:
                     Color:
@@ -763,114 +746,132 @@ ScreenManager:
     name: 'final'
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(16)
-        spacing: dp(20)
+        padding: [dp(16), dp(24), dp(16), dp(16)]
+        spacing: dp(12)
 
-        Label:
-            text: 'Результат'
-            color: 0.15, 0.55, 0.9, 1
-            font_size: '32sp'
-            bold: True
+        BoxLayout:
             size_hint_y: None
             height: dp(60)
-
-        Label:
-            id: score_label
-            text: root.score_text
-            color: 0.2, 0.2, 0.2, 1
-            font_size: '24sp'
-            halign: 'center'
-            valign: 'top'
-            size_hint_y: 1
-            text_size: self.width, None
-
-        Label:
-            id: note_label
-            text: root.note_text
-            color: 0.35, 0.35, 0.35, 1
-            font_size: '15sp'
-            halign: 'left'
-            valign: 'top'
-            size_hint_y: None
-            height: dp(60)
-            text_size: self.width, None
-
-        RoundedButton:
-            id: delete_button
-            text: 'Удалить курс из истории'
-            font_size: '18sp'
-            bold: True
-            size_hint: None, None
-            size: dp(280), dp(60)
-            pos_hint: {'center_x': 0.5}
-            bg_color: (0.8, 0.35, 0.35, 1)
-            color: 1, 1, 1, 1
-            on_release: app.delete_current_course()
-
-        Label:
-            text: 'Объяснения ошибок'
-            color: 0.3, 0.3, 0.3, 1
-            font_size: '18sp'
-            halign: 'left'
-            size_hint_y: None
-            height: dp(26)
-            text_size: self.width, None
+            padding: [0, 0, 0, 0]
+            IconButton:
+                size_hint: None, None
+                size: dp(36), dp(36)
+                pos_hint: {'center_y': 0.5}
+                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                on_release: app.exit_to_main()
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.9
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(22)]
+            Widget:
 
         ScrollView:
-            size_hint_y: None
-            height: dp(180)
-            bar_width: 0
-            GridLayout:
-                id: error_explanations_box
-                cols: 1
-                size_hint_y: None
-                height: self.minimum_height
-                spacing: dp(6)
-                padding: [0, 0]
-
-        Label:
-            text: 'Темы для углубления'
-            color: 0.3, 0.3, 0.3, 1
-            font_size: '18sp'
-            halign: 'left'
-            size_hint_y: None
-            height: dp(26)
-            text_size: self.width, None
-
-        ScrollView:
-            size_hint_y: None
-            height: dp(220)
             bar_width: 0
             do_scroll_x: False
             GridLayout:
-                id: followup_topics_box
                 cols: 1
                 size_hint_y: None
                 height: self.minimum_height
-                spacing: dp(8)
+                spacing: dp(12)
                 padding: [0, 0]
 
-        RoundedButton:
-            text: 'ПРОЙТИ ЕЩЁ РАЗ'
-            font_size: '18sp'
-            bold: True
-            size_hint: None, None
-            size: dp(280), dp(60)
-            pos_hint: {'center_x': 0.5}
-            bg_color: (0.15, 0.55, 0.9, 1)
-            color: 1, 1, 1, 1
-            on_release: app.restart_quiz()
+                Label:
+                    text: 'Результат'
+                    color: 0.15, 0.55, 0.9, 1
+                    font_size: '32sp'
+                    bold: True
+                    size_hint_y: None
+                    height: dp(56)
 
-        RoundedButton:
-            text: 'ВЫЙТИ ИЗ ТЕСТА'
-            font_size: '18sp'
-            bold: True
-            size_hint: None, None
-            size: dp(280), dp(60)
-            pos_hint: {'center_x': 0.5}
-            bg_color: (0.8, 0.3, 0.3, 1)
-            color: 1, 1, 1, 1
-            on_release: app.root.current = 'main'
+                Label:
+                    id: score_label
+                    text: root.score_text
+                    color: 0.2, 0.2, 0.2, 1
+                    font_size: '24sp'
+                    halign: 'center'
+                    valign: 'top'
+                    size_hint_y: None
+                    height: dp(50)
+                    text_size: self.width, None
+
+                Label:
+                    id: note_label
+                    text: root.note_text
+                    color: 0.35, 0.35, 0.35, 1
+                    font_size: '15sp'
+                    halign: 'left'
+                    valign: 'top'
+                    size_hint_y: None
+                    height: dp(60)
+                    text_size: self.width, None
+
+                Label:
+                    text: 'Работа над ошибками'
+                    color: 0.3, 0.3, 0.3, 1
+                    font_size: '18sp'
+                    halign: 'left'
+                    size_hint_y: None
+                    height: dp(26)
+                    text_size: self.width, None
+
+                GridLayout:
+                    id: error_explanations_box
+                    cols: 1
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: dp(6)
+                    padding: [0, 0]
+
+                Label:
+                    text: 'Темы для углубления'
+                    color: 0.3, 0.3, 0.3, 1
+                    font_size: '18sp'
+                    halign: 'left'
+                    size_hint_y: None
+                    height: dp(26)
+                    text_size: self.width, None
+
+                GridLayout:
+                    id: followup_topics_box
+                    cols: 1
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: dp(8)
+                    padding: [0, 0]
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(80)
+            padding: [0, dp(8), 0, dp(8)]
+            spacing: dp(12)
+
+            RoundedButton:
+                id: delete_button
+                text: 'Удалить курс'
+                font_size: '18sp'
+                bold: True
+                size_hint: (0.45, None)
+                height: dp(56)
+                bg_color: (0.8, 0.35, 0.35, 1)
+                color: 1, 1, 1, 1
+                disabled: True
+                opacity: 0.4
+                on_release: app.delete_current_course()
+
+            RoundedButton:
+                text: 'К ТЕОРИИ'
+                font_size: '18sp'
+                bold: True
+                size_hint: (0.55, None)
+                height: dp(56)
+                pos_hint: {'center_x': 0.5}
+                bg_color: (0.15, 0.55, 0.9, 1)
+                color: 1, 1, 1, 1
+                on_release: app.return_to_theory()
 """
 
 
@@ -879,11 +880,13 @@ class CourseCard(ButtonBehavior, BoxLayout):
     
     def __init__(self, topic, difficulty, **kwargs):
         super().__init__(**kwargs)
+        self.topic = topic
+        self.difficulty = difficulty
         self.orientation = 'vertical'
         self.padding = [dp(16), dp(12)]
         self.spacing = dp(4)
         self.size_hint_y = None
-        self.height = dp(90)
+        self.height = dp(110)
         
         with self.canvas.before:
             self._rect_color = Color(rgba=self.bg_color)
@@ -891,8 +894,8 @@ class CourseCard(ButtonBehavior, BoxLayout):
             
         self.bind(pos=self._update_rect, size=self._update_rect)
         
-        # Topic Label
-        self.add_widget(Label(
+        top_row = BoxLayout(size_hint_y=None, height=dp(32))
+        topic_label = Label(
             text=topic,
             color=(0.2, 0.2, 0.2, 1),
             font_size='18sp',
@@ -900,11 +903,20 @@ class CourseCard(ButtonBehavior, BoxLayout):
             halign='left',
             valign='middle',
             text_size=(self.width, None),
-            size_hint_y=None,
-            height=dp(30)
-        ))
+        )
+        topic_label.bind(size=lambda inst, size: setattr(inst, 'text_size', (size[0], None)))
+        topic_label.size_hint_x = 0.85
+        top_row.add_widget(topic_label)
+        delete_btn = IconButton(
+            size_hint=(None, None),
+            size=(dp(26), dp(26)),
+            default_source='assets/icons/free-icon-font-trash-3917242(1).png',
+            pressed_source='assets/icons/free-icon-font-trash-3917242(1).png'
+        )
+        delete_btn.bind(on_release=lambda inst: App.get_running_app().delete_saved_course(topic, difficulty))
+        top_row.add_widget(delete_btn)
+        self.add_widget(top_row)
         
-        # Difficulty Label
         diff_color = (0.3, 0.7, 0.3, 1) if 'легкий' in difficulty.lower() else \
                      (0.9, 0.6, 0.2, 1) if 'средний' in difficulty.lower() else \
                      (0.9, 0.3, 0.3, 1)
@@ -950,6 +962,67 @@ class RoundedButton(Button):
 
     def _update_color(self, *args):
         self._rect_color.rgba = self.bg_color
+
+
+class IconButton(ButtonBehavior, Image):
+    default_source = StringProperty('')
+    pressed_source = StringProperty('')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.allow_stretch = True
+        self.keep_ratio = True
+        self.size_hint = (None, None)
+        self.bind(state=self._update_source)
+        self._update_source(self, getattr(self, 'state', 'normal'))
+
+    def on_default_source(self, instance, value):
+        if self.state != 'down' and value:
+            self.source = value
+
+    def _update_source(self, instance, state):
+        if state == 'down' and self.pressed_source:
+            self.source = self.pressed_source
+        elif self.default_source:
+            self.source = self.default_source
+
+
+class IconToggleButton(ToggleButtonBehavior, Image):
+    icon_source = StringProperty('')
+    target_screen = StringProperty('')
+    active_color = ListProperty([0.15, 0.55, 0.9, 1])
+    inactive_color = ListProperty([0.5, 0.5, 0.5, 1])
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.allow_stretch = True
+        self.keep_ratio = True
+        self.size_hint = (None, None)
+        self.bind(state=self._update_style)
+        self._update_style(self, getattr(self, 'state', 'normal'))
+        if self.icon_source:
+            self.source = self.icon_source
+
+    def on_icon_source(self, instance, value):
+        if value:
+            self.source = value
+
+    def _update_style(self, instance, state):
+        if state == 'down':
+            self.color = self.active_color
+        else:
+            self.color = self.inactive_color
+
+    def on_release(self):
+        super().on_release()
+        if self.target_screen:
+            app = App.get_running_app()
+            if app and getattr(app.root, 'get_screen', None):
+                try:
+                    main_screen = app.root.get_screen('main')
+                    main_screen.ids.tab_manager.current = self.target_screen
+                except Exception:
+                    pass
 
 
 class DifficultyButton(ToggleButton):
@@ -1043,6 +1116,24 @@ class MainScreen(Screen):
         else:
             self.ids.network_status.text = '📵'
             self.ids.network_status.color = (0.9, 0.3, 0.3, 1)
+
+    def on_kv_post(self, base_widget):
+        super().on_kv_post(base_widget)
+        try:
+            self._nav_buttons = [
+                self.ids.nav_saved,
+                self.ids.nav_search,
+                self.ids.nav_settings
+            ]
+            tab_manager = self.ids.tab_manager
+            tab_manager.bind(current=self._sync_nav_icons)
+            self._sync_nav_icons(tab_manager, tab_manager.current)
+        except Exception:
+            self._nav_buttons = []
+
+    def _sync_nav_icons(self, tab_manager, current):
+        for btn in getattr(self, '_nav_buttons', []):
+            btn.state = 'down' if getattr(btn, 'target_screen', None) == current else 'normal'
 
 class SavedScreen(Screen):
     pass
@@ -1324,7 +1415,6 @@ class MyApp(App):
             
             self.log("App started. Storage initialized.")
             print("[MAIN] build() complete!")
-            self.update_theory_delete_button(root)
             return root
         except Exception as e:
             print(f"[MAIN] ERROR in build(): {e}")
@@ -1508,7 +1598,6 @@ class MyApp(App):
                 meta.setdefault('notes', {})['quick_hint'] = snippet
             self._last_saved_meta = meta
             self.last_material = f"Тема: {topic}\n\n{theory_text}" if topic else theory_text
-            self.update_theory_delete_button()
             
             # Если есть теория, показываем её
             if 'theory' in result and result['theory']:
@@ -1575,18 +1664,6 @@ class MyApp(App):
         final_screen.set_delete_enabled(bool(topic))
         self.prepare_followup_topics()
 
-    def update_theory_delete_button(self, root=None):
-        screen_root = root or getattr(self, 'root', None)
-        if not screen_root:
-            return
-        try:
-            button = screen_root.get_screen('theory').ids.theory_delete_button
-        except Exception:
-            return
-        enabled = bool(self._last_saved_meta)
-        button.disabled = not enabled
-        button.opacity = 1 if enabled else 0.4
-
     def adjust_difficulty(self, percent):
         levels = ['легкий', 'средний', 'эксперт']
         try:
@@ -1626,7 +1703,20 @@ class MyApp(App):
             final_screen.set_delete_enabled(False)
             self._last_saved_meta = None
             self.load_saved_courses_ui()
-            self.update_theory_delete_button()
+
+    def delete_saved_course(self, topic, difficulty):
+        if not topic:
+            return
+        removed = self.storage.delete(topic, difficulty)
+        if not removed:
+            return
+        self.log(f"Курс '{topic}' ({difficulty}) удалён из истории.")
+        if self._last_saved_meta and self._last_saved_meta.get('topic') == topic and \
+                self._last_saved_meta.get('difficulty') == difficulty:
+            self._last_saved_meta = None
+            final_screen = self.root.get_screen('final')
+            final_screen.set_delete_enabled(False)
+        self.load_saved_courses_ui()
 
     def load_saved_courses_ui(self):
         main_screen = self.root.get_screen('main')
@@ -1665,6 +1755,14 @@ class MyApp(App):
         quiz = self.root.get_screen('quiz')
         quiz.reset_quiz()
         self.root.current = 'quiz'
+
+    def exit_to_main(self):
+        if self.root:
+            self.root.current = 'main'
+
+    def return_to_theory(self):
+        if self.root:
+            self.root.current = 'theory'
 
 
 if __name__ == '__main__':
