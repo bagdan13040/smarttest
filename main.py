@@ -1,58 +1,91 @@
+"""
+SmartTest - Приложение для интеллектуального тестирования с AI
+Автоматическая генерация теории, тестов и открытых вопросов на основе LLM.
+
+Основные функции:
+- Генерация образовательного контента по любой теме
+- MC (Multiple Choice) тесты с автоматической проверкой
+- Открытые вопросы с AI-оценкой ответов
+- Адаптивная сложность на основе результатов
+- Кеширование вопросов для быстрого доступа
+- Полный отчёт с работой над ошибками
+"""
+
 print("[MAIN] === Application Starting ===")
 import sys
 import traceback as tb_module
 print(f"[MAIN] Python version: {sys.version}")
 print(f"[MAIN] Platform: {sys.platform}")
 
-# Check for Android
+# ========================================
+# ПРОВЕРКА ПЛАТФОРМЫ
+# ========================================
+# Определяем, запущено ли приложение на Android
+# (в будущем можно добавить специфичную логику для мобильной версии)
 IS_ANDROID = False
+
+# ========================================
+# ИМПОРТЫ KIVY
+# ========================================
+# Импортируем все необходимые компоненты Kivy для построения UI
 try:
     print("[MAIN] UI widgets imported")
-    from kivy.app import App
-    from kivy.lang import Builder
-    from kivy.core.window import Window
-    from kivy.uix.screenmanager import ScreenManager, Screen
-    from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.anchorlayout import AnchorLayout
-    from kivy.uix.gridlayout import GridLayout
-    from kivy.uix.label import Label
-    from kivy.uix.image import Image
-    from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
-    from kivy.uix.button import Button
-    from kivy.uix.togglebutton import ToggleButton
-    from kivy.uix.scrollview import ScrollView
-    from kivy.uix.textinput import TextInput
-    from kivy.uix.widget import Widget
-    from kivy.metrics import dp
-    from kivy.properties import StringProperty, ListProperty, NumericProperty
+    from kivy.app import App  # Основной класс приложения
+    from kivy.lang import Builder  # Парсер KV языка для описания UI
+    from kivy.core.window import Window  # Управление окном приложения
+    from kivy.uix.screenmanager import ScreenManager, Screen  # Менеджер экранов
+    from kivy.uix.boxlayout import BoxLayout  # Линейный layout
+    from kivy.uix.anchorlayout import AnchorLayout  # Layout для центрирования
+    from kivy.uix.gridlayout import GridLayout  # Табличный layout
+    from kivy.uix.label import Label  # Текстовые метки
+    from kivy.uix.image import Image  # Изображения
+    from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior  # Поведение кнопок
+    from kivy.uix.button import Button  # Стандартные кнопки
+    from kivy.uix.togglebutton import ToggleButton  # Переключаемые кнопки
+    from kivy.uix.scrollview import ScrollView  # Прокручиваемые области
+    from kivy.uix.textinput import TextInput  # Поля ввода текста
+    from kivy.uix.widget import Widget  # Базовый виджет
+    from kivy.metrics import dp  # Density-independent pixels для кросс-платформенности
+    from kivy.properties import StringProperty, ListProperty, NumericProperty, BooleanProperty  # Реактивные свойства
 
     print("[MAIN] graphics imported")
-    from kivy.graphics import Color, RoundedRectangle
+    from kivy.graphics import Color, RoundedRectangle, Rectangle  # Графические примитивы
     print("[MAIN] Clock imported")
-    from kivy.clock import Clock
+    from kivy.clock import Clock  # Планировщик событий
     print("[MAIN] metrics imported")
 except Exception as e:
     print(f"[MAIN] ERROR importing kivy: {e}")
     print(f"[MAIN] Traceback: {tb_module.format_exc()}")
     raise
 
+# ========================================
+# СТАНДАРТНЫЕ БИБЛИОТЕКИ
+# ========================================
 print("[MAIN] Importing standard modules...")
-from datetime import datetime
-import threading
-import random
-import json
-import os
-import uuid
+from datetime import datetime  # Работа с датой и временем
+import threading  # Многопоточность для асинхронных операций
+import random  # Генерация случайных чисел
+import json  # Работа с JSON
+import os  # Работа с файловой системой
+import uuid  # Генерация уникальных идентификаторов
 print("[MAIN] Standard modules imported")
 
+# ========================================
+# ИМПОРТ LLM МОДУЛЯ
+# ========================================
+# Модуль llm.py содержит функции для работы с AI:
+# - generate_quiz: генерация теории и MC вопросов
+# - generate_open_questions: генерация открытых вопросов
+# - evaluate_answer: оценка развёрнутых ответов
+# - generate_next_topics: предложение тем для углубления
 print("[MAIN] Importing llm module...")
 try:
-    from llm import generate_quiz, generate_next_topics, get_course_topics
+    from llm import generate_quiz, generate_next_topics, get_course_topics, generate_open_questions, evaluate_answer
     print("[MAIN] llm module imported successfully")
 except Exception as e:
     print(f"[MAIN] Error importing llm: {e}")
     print(f"[MAIN] Traceback: {tb_module.format_exc()}")
-    # Fallback if llm fails to load (e.g. missing requests)
+    # Fallback функции если LLM модуль не загружен
     def generate_quiz(topic, difficulty):
         return {
             "theory": f"Ошибка загрузки модуля LLM: {e}. Проверьте логи.",
@@ -66,9 +99,18 @@ except Exception as e:
     def get_course_topics(memory_file='course_topics.json'):
         return []
 
-# Warm light background
+# ========================================
+# НАСТРОЙКА ОКНА
+# ========================================
+# Устанавливаем тёплый светлый фон для всего приложения
 Window.clearcolor = (0.95, 0.93, 0.90, 1)
-# Window.size = (360, 700) # Removed to allow proper scaling on Android
+# Window.size закомментирован для корректного масштабирования на Android
+
+# ========================================
+# ОБРАЗОВАТЕЛЬНЫЙ КОНТЕНТ
+# ========================================
+# Интересные факты, показываемые на экране загрузки
+# для развлечения пользователя во время генерации контента
 INTERESTING_FACTS = [
     "Первый компьютерный баг был настоящим мотыльком, застрявшим в реле.",
     "Сердце синего кита весит столько же, сколько автомобиль.",
@@ -143,11 +185,36 @@ INTERESTING_FACTS = [
 from kivy.storage.jsonstore import JsonStore
 
 class CourseStorage:
+    """
+    Класс для управления хранилищем курсов и тестов.
+    
+    Хранит все пройденные курсы в JSON файле, включая:
+    - Мета-информацию (тема, сложность, дата)
+    - Сгенерированную теорию
+    - Вопросы для тестирования
+    - Историю прохождения
+    - Краткие заметки
+    
+    Файл: courses.json в директории пользовательских данных приложения
+    """
+    
     def __init__(self, filename='courses.json'):
+        """
+        Инициализация хранилища.
+        
+        Args:
+            filename: Путь к JSON файлу для хранения курсов
+        """
         self.filename = filename
-        self.courses = self.load()
+        self.courses = self.load()  # Загружаем существующие курсы
 
     def load(self):
+        """
+        Загружает курсы из JSON файла.
+        
+        Returns:
+            list: Список курсов или пустой список если файл не существует
+        """
         if not os.path.exists(self.filename):
             return []
         try:
@@ -157,20 +224,43 @@ class CourseStorage:
             return []
 
     def save(self, course):
+        """
+        Сохраняет курс в хранилище.
+        
+        Если курс с такой же темой и сложностью уже существует - обновляет его.
+        Иначе добавляет новый курс. Перемещает курс в начало списка.
+        
+        Args:
+            course: Словарь с данными курса, должен содержать ключ 'meta' с 'topic' и 'difficulty'
+        """
         topic = course.get('meta', {}).get('topic', '')
         difficulty = course.get('meta', {}).get('difficulty', '')
+        
+        # Ищем существующий курс с такими же параметрами
         for idx, c in enumerate(self.courses):
             if c.get('meta', {}).get('topic') == topic and \
                c.get('meta', {}).get('difficulty') == difficulty:
+                # Обновляем существующий курс и перемещаем в начало списка
                 self.courses[idx] = course
                 self.courses.insert(0, self.courses.pop(idx))
                 self._write()
                 return
 
+        # Если курс не найден, добавляем новый в начало списка
         self.courses.insert(0, course)
         self._write()
 
     def find(self, topic, difficulty):
+        """
+        Ищет курс по теме и сложности.
+        
+        Args:
+            topic: Название темы курса
+            difficulty: Уровень сложности ('easy', 'medium', 'hard')
+            
+        Returns:
+            dict|None: Найденный курс или None если курс не найден
+        """
         for c in self.courses:
             meta = c.get('meta', {})
             if meta.get('topic') == topic and meta.get('difficulty') == difficulty:
@@ -178,16 +268,38 @@ class CourseStorage:
         return None
 
     def update_entry(self, topic, difficulty, updater):
+        """
+        Обновляет существующий курс с помощью функции-обновителя.
+        
+        Args:
+            topic: Название темы курса
+            difficulty: Уровень сложности
+            updater: Функция, принимающая словарь курса и модифицирующая его
+            
+        Returns:
+            dict|None: Обновленный курс или None если курс не найден
+        """
         for idx, c in enumerate(self.courses):
             meta = c.get('meta', {})
             if meta.get('topic') == topic and meta.get('difficulty') == difficulty:
-                updater(c)
+                updater(c)  # Вызываем функцию обновления
+                # Перемещаем обновленный курс в начало списка
                 self.courses.insert(0, self.courses.pop(idx))
                 self._write()
                 return c
         return None
 
     def delete(self, topic, difficulty):
+        """
+        Удаляет курс из хранилища.
+        
+        Args:
+            topic: Название темы курса
+            difficulty: Уровень сложности
+            
+        Returns:
+            bool: True если курс был удален, False если курс не найден
+        """
         removed = False
         for idx, c in enumerate(self.courses):
             meta = c.get('meta', {})
@@ -200,28 +312,53 @@ class CourseStorage:
         return removed
 
     def _write(self):
+        """
+        Записывает текущий список курсов в JSON файл.
+        
+        Внутренний метод для сохранения состояния хранилища на диск.
+        """
         with open(self.filename, 'w', encoding='utf-8') as f:
             json.dump(self.courses, f, ensure_ascii=False, indent=2)
             
     def get_all(self):
+        """
+        Возвращает список всех курсов.
+        
+        Returns:
+            list: Список всех сохраненных курсов
+        """
         return self.courses
+
+
+# ============================================================================
+# KV MARKUP LANGUAGE - ДЕКЛАРАТИВНОЕ ОПИСАНИЕ ИНТЕРФЕЙСА
+# ============================================================================
+# Kivy использует язык KV для описания UI компонентов
+# Формат: ClassName: с отступами для вложенных элементов
+# Свойства: property: value
+# Привязки: self.property для реактивных обновлений
 
 KV = """
 #:import dp kivy.metrics.dp
 
+# Главный менеджер экранов - переключает между основными экранами приложения
 ScreenManager:
     MainScreen:
     LoadingScreen:
     TheoryScreen:
     QuizScreen:
+    OpenAnswerScreen:
     FinalScreen:
 
+# NavButton - Кнопка нижней навигации (табы)
+# Унаследована от ToggleButton для поддержки выбора активного таба
 <NavButton@ToggleButton>:
-    background_normal: ''
+    background_normal: ''  # Отключаем стандартный фон
     background_down: ''
-    background_color: 0, 0, 0, 0
-    group: 'nav'
-    allow_no_selection: False
+    background_color: 0, 0, 0, 0  # Прозрачный фон
+    group: 'nav'  # Группа для взаимоисключающего выбора
+    allow_no_selection: False  # Всегда должна быть выбрана одна кнопка
+    # Цвет текста: серый если не активна, синий если активна
     color: (0.5, 0.5, 0.5, 1) if self.state == 'normal' else (0.15, 0.55, 0.9, 1)
     bold: True if self.state == 'down' else False
     font_size: '16sp'
@@ -230,18 +367,22 @@ ScreenManager:
     text_size: self.size
     canvas.before:
         Color:
+            # Синяя линия сверху для активной кнопки
             rgba: (0.15, 0.55, 0.9, 1) if self.state == 'down' else (0, 0, 0, 0)
         Line:
+            # Рисуем горизонтальную линию сверху кнопки
             points: [self.x + self.width * 0.2, self.y + self.height - 2, self.x + self.width * 0.8, self.y + self.height - 2]
             width: 2 if self.state == 'down' else 0.001
 
+# MainScreen - Главный экран приложения с тремя табами
 <MainScreen>:
     name: 'main'
     BoxLayout:
         orientation: 'vertical'
         size_hint: (1, 1)
-        padding: [0, dp(30), 0, 0]  # Top padding for status bar
+        padding: [0, dp(30), 0, 0]  # Отступ сверху для статус-бара Android
         
+        # Хедер с логотипом и статусом сети
         BoxLayout:
             size_hint_y: None
             height: dp(30)
@@ -251,20 +392,21 @@ ScreenManager:
                 text: 'SmartTest'
                 font_size: '18sp'
                 bold: True
-                color: 0.15, 0.55, 0.9, 1
+                color: 0.15, 0.55, 0.9, 1  # Основной синий цвет
                 halign: 'left'
                 text_size: self.size
                 valign: 'middle'
             
             Label:
                 id: network_status
-                text: '⚡'
+                text: '⚡'  # Иконка статуса подключения
                 font_size: '18sp'
                 color: 0.5, 0.5, 0.5, 1
                 halign: 'right'
                 text_size: self.size
                 valign: 'middle'
 
+        # Менеджер табов - переключает между сохраненными, поиском, настройками
         ScreenManager:
             id: tab_manager
             size_hint: (1, 1)
@@ -275,6 +417,7 @@ ScreenManager:
             SettingsScreen:
                 name: 'settings'
                 
+        # Нижняя навигация - фиксированная панель с кнопками табов
         BoxLayout:
             size_hint_y: None
             height: dp(64)
@@ -282,7 +425,7 @@ ScreenManager:
             spacing: dp(32)
             canvas.before:
                 Color:
-                    rgba: 1, 1, 1, 1
+                    rgba: 0, 0, 0, 0
                 Rectangle:
                     pos: self.pos
                     size: self.size
@@ -444,40 +587,6 @@ ScreenManager:
             height: dp(40)
             halign: 'left'
             text_size: (self.width, None)
-
-        # Weather widget for Ufa
-        BoxLayout:
-            orientation: 'vertical'
-            size_hint_y: None
-            height: dp(90)
-            padding: [dp(12), dp(8)]
-            canvas.before:
-                Color:
-                    rgba: 0.2, 0.6, 0.9, 0.15
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [dp(12)]
-            Label:
-                text: '🌤 Погода в Уфе'
-                color: 0.15, 0.55, 0.9, 1
-                font_size: '16sp'
-                bold: True
-                size_hint_y: None
-                height: dp(25)
-                halign: 'left'
-                text_size: (self.width, None)
-            Label:
-                id: weather_label
-                text: 'Загрузка...'
-                color: 0.3, 0.3, 0.3, 1
-                font_size: '14sp'
-                size_hint_y: None
-                height: dp(50)
-                halign: 'left'
-                valign: 'top'
-                text_size: (self.width, None)
-                markup: True
 
         Label:
             text: 'API Ключ OpenRouter:'
@@ -742,34 +851,154 @@ ScreenManager:
         
         Widget:
 
-<FinalScreen>:
-    name: 'final'
+<OpenAnswerScreen>:
+    name: 'open_answer'
     BoxLayout:
         orientation: 'vertical'
-        padding: [dp(16), dp(24), dp(16), dp(16)]
+        padding: dp(16)
         spacing: dp(12)
 
         BoxLayout:
             size_hint_y: None
-            height: dp(60)
-            padding: [0, 0, 0, 0]
+            height: dp(50)
+            spacing: dp(10)
+            
             IconButton:
                 size_hint: None, None
                 size: dp(36), dp(36)
-                pos_hint: {'center_y': 0.5}
                 default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
                 pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                on_release: app.exit_to_main()
+                on_release: app.root.current = 'main'
                 canvas.before:
                     Color:
-                        rgba: 1, 1, 1, 0.9
+                        rgba: (0.9, 0.9, 0.9, 1)
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [dp(22)]
+                        radius: [dp(12)]
+
             Widget:
 
+        Label:
+            id: progress_label
+            text: 'Вопрос 1/3'
+            color: 0.5, 0.5, 0.5, 1
+            size_hint_y: None
+            height: dp(30)
+            halign: 'center'
+            font_size: '16sp'
+
         ScrollView:
+            size_hint_y: None
+            height: dp(180)
+            do_scroll_x: False
+            Label:
+                id: question_label
+                text: ''
+                color: 0.12, 0.45, 0.85, 1
+                font_size: '20sp'
+                bold: True
+                text_size: self.parent.width - dp(30), None
+                halign: 'left'
+                valign: 'top'
+                size_hint_y: None
+                height: max(dp(100), self.texture_size[1])
+
+        Widget:
+            size_hint_y: None
+            height: dp(12)
+
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: 0.5
+            spacing: dp(8)
+
+            Label:
+                text: 'Ваш развёрнутый ответ:'
+                color: 0.4, 0.4, 0.45, 1
+                font_size: '15sp'
+                halign: 'left'
+                size_hint_y: None
+                height: dp(28)
+                text_size: self.width, None
+
+            BoxLayout:
+                size_hint_y: 1
+                canvas.before:
+                    Color:
+                        rgba: 0.7, 0.7, 0.8, 0.1
+                    RoundedRectangle:
+                        pos: self.x + dp(1), self.y - dp(2)
+                        size: self.width, self.height
+                        radius: [dp(16)]
+                    Color:
+                        rgba: 0.96, 0.97, 0.99, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(16)]
+                TextInput:
+                    id: answer_input
+                    hint_text: '💭 Введите ваш ответ здесь...'
+                    multiline: True
+                    font_size: '16sp'
+                    padding: [dp(16), dp(12)]
+                    background_normal: ''
+                    background_active: ''
+                    background_color: 0, 0, 0, 0
+                    foreground_color: 0.15, 0.15, 0.2, 1
+                    cursor_color: 0.12, 0.45, 0.85, 1
+
+            ScrollView:
+                size_hint_y: 0.4
+                Label:
+                    id: feedback_label
+                    text: ''
+                    markup: True
+                    color: 0.3, 0.3, 0.3, 1
+                    font_size: '15sp'
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                    text_size: self.parent.width - dp(20), None
+                    padding: [dp(10), dp(10)]
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            spacing: dp(10)
+
+            RoundedButton:
+                id: skip_button
+                text: 'ПРОПУСТИТЬ'
+                bg_color: (0.6, 0.6, 0.65, 1)
+                font_size: '16sp'
+                size_hint_x: 0.35
+                on_release: app.skip_open_question()
+
+            RoundedButton:
+                id: action_button
+                text: 'ОТПРАВИТЬ ✓'
+                font_size: '17sp'
+                bold: True
+                size_hint_x: 0.65
+                bg_color: (0.15, 0.55, 0.9, 1)
+                color: 1, 1, 1, 1
+                on_release: app.handle_open_answer_action()
+
+        Widget:
+            size_hint_y: None
+            height: dp(10)
+
+<FinalScreen>:
+    name: 'final'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(16), dp(12), dp(16), dp(16)]
+        spacing: dp(0)
+
+        ScrollView:
+            id: final_scroll
+            size_hint_y: 1
             bar_width: 0
             do_scroll_x: False
             GridLayout:
@@ -777,7 +1006,31 @@ ScreenManager:
                 size_hint_y: None
                 height: self.minimum_height
                 spacing: dp(12)
-                padding: [0, 0]
+                padding: [0, dp(12), 0, dp(120)]
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(50)
+                    padding: [0, 0, 0, 0]
+                    IconButton:
+                        size_hint: None, None
+                        size: dp(36), dp(36)
+                        pos_hint: {'center_y': 0.5}
+                        default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                        pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                        on_release: app.exit_to_main()
+                        canvas.before:
+                            Color:
+                                rgba: 1, 1, 1, 0.9
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(22)]
+                    Widget:
+
+                Widget:
+                    size_hint_y: None
+                    height: dp(8)
 
                 Label:
                     text: 'Результат'
@@ -795,27 +1048,36 @@ ScreenManager:
                     halign: 'center'
                     valign: 'top'
                     size_hint_y: None
-                    height: dp(50)
+                    height: self.texture_size[1] + dp(20)
                     text_size: self.width, None
+
+                Widget:
+                    size_hint_y: None
+                    height: dp(8)
 
                 Label:
                     id: note_label
                     text: root.note_text
                     color: 0.35, 0.35, 0.35, 1
-                    font_size: '15sp'
+                    font_size: '14sp'
                     halign: 'left'
                     valign: 'top'
                     size_hint_y: None
-                    height: dp(60)
+                    height: self.texture_size[1] + dp(16)
                     text_size: self.width, None
+
+                Widget:
+                    size_hint_y: None
+                    height: dp(16)
 
                 Label:
                     text: 'Работа над ошибками'
                     color: 0.3, 0.3, 0.3, 1
                     font_size: '18sp'
+                    bold: True
                     halign: 'left'
                     size_hint_y: None
-                    height: dp(26)
+                    height: dp(32)
                     text_size: self.width, None
 
                 GridLayout:
@@ -823,16 +1085,21 @@ ScreenManager:
                     cols: 1
                     size_hint_y: None
                     height: self.minimum_height
-                    spacing: dp(6)
+                    spacing: dp(10)
                     padding: [0, 0]
+
+                Widget:
+                    size_hint_y: None
+                    height: dp(16)
 
                 Label:
                     text: 'Темы для углубления'
                     color: 0.3, 0.3, 0.3, 1
                     font_size: '18sp'
+                    bold: True
                     halign: 'left'
                     size_hint_y: None
-                    height: dp(26)
+                    height: dp(32)
                     text_size: self.width, None
 
                 GridLayout:
@@ -845,37 +1112,69 @@ ScreenManager:
 
         BoxLayout:
             size_hint_y: None
-            height: dp(80)
-            padding: [0, dp(8), 0, dp(8)]
-            spacing: dp(12)
+            height: dp(64)
+            padding: [dp(12), dp(8), dp(12), dp(8)]
+            spacing: dp(32)
+            canvas.before:
+                Color:
+                    rgba: 0, 0, 0, 0
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: 0.92, 0.92, 0.92, 1
+                Line:
+                    points: [self.x, self.y + self.height, self.x + self.width, self.y + self.height]
+                    width: 1
 
-            RoundedButton:
-                id: delete_button
-                text: 'Удалить курс'
-                font_size: '18sp'
-                bold: True
-                size_hint: (0.45, None)
-                height: dp(56)
-                bg_color: (0.8, 0.35, 0.35, 1)
-                color: 1, 1, 1, 1
-                disabled: True
-                opacity: 0.4
-                on_release: app.delete_current_course()
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                IconToggleButton:
+                    size: dp(34), dp(34)
+                    icon_source: 'assets/icons/free-icon-font-home-3917033.png'
+                    target_screen: 'saved'
+                    group: 'final_nav'
+                    on_release: app.exit_to_main()
 
-            RoundedButton:
-                text: 'К ТЕОРИИ'
-                font_size: '18sp'
-                bold: True
-                size_hint: (0.55, None)
-                height: dp(56)
-                pos_hint: {'center_x': 0.5}
-                bg_color: (0.15, 0.55, 0.9, 1)
-                color: 1, 1, 1, 1
-                on_release: app.return_to_theory()
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                IconToggleButton:
+                    size: dp(34), dp(34)
+                    icon_source: 'assets/icons/free-icon-font-search-3917132.png'
+                    target_screen: 'search'
+                    group: 'final_nav'
+                    on_release: app.goto_search_tab()
+
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                IconToggleButton:
+                    size: dp(34), dp(34)
+                    icon_source: 'assets/icons/free-icon-font-settings-sliders-3917103.png'
+                    target_screen: 'settings'
+                    group: 'final_nav'
+                    on_release: app.return_to_theory()
 """
 
 
+# ============================================================================
+# ПОЛЬЗОВАТЕЛЬСКИЕ ВИДЖЕТЫ - ПЕРЕИСПОЛЬЗУЕМЫЕ UI КОМПОНЕНТЫ
+# ============================================================================
+
 class CourseCard(ButtonBehavior, BoxLayout):
+    """
+    Карточка курса для отображения в списке сохранённых курсов.
+    
+    Показывает название темы, уровень сложности и кнопку удаления.
+    Кликабельная - при нажатии открывает курс для прохождения.
+    
+    Атрибуты:
+        topic: Название темы курса
+        difficulty: Уровень сложности ('легкий', 'средний', 'эксперт')
+        bg_color: Цвет фона карточки
+    """
     bg_color = ListProperty([1, 1, 1, 1])
     
     def __init__(self, topic, difficulty, **kwargs):
@@ -913,7 +1212,7 @@ class CourseCard(ButtonBehavior, BoxLayout):
             default_source='assets/icons/free-icon-font-trash-3917242(1).png',
             pressed_source='assets/icons/free-icon-font-trash-3917242(1).png'
         )
-        delete_btn.bind(on_release=lambda inst: App.get_running_app().delete_saved_course(topic, difficulty))
+        delete_btn.bind(on_release=lambda inst, t=topic, d=difficulty: App.get_running_app().delete_saved_course(t, d))
         top_row.add_widget(delete_btn)
         self.add_widget(top_row)
         
@@ -940,13 +1239,23 @@ class CourseCard(ButtonBehavior, BoxLayout):
 
 
 class RoundedButton(Button):
+    """
+    Кнопка со скруглёнными углами и настраиваемым цветом фона.
+    
+    Используется для основных действий в приложении.
+    Поддерживает динамическое изменение цвета через bg_color.
+    
+    Атрибуты:
+        bg_color: Цвет фона кнопки в формате [R, G, B, A]
+    """
     bg_color = ListProperty([0.15, 0.55, 0.9, 1])
 
     def __init__(self, **kwargs):
+        """Инициализация кнопки с прозрачным стандартным фоном"""
         super().__init__(**kwargs)
         self.background_normal = ''
         self.background_down = ''
-        self.background_color = (0, 0, 0, 0)
+        self.background_color = (0, 0, 0, 0)  # Прозрачный - рисуем свой фон
         self.halign = 'center'
         self.valign = 'middle'
         with self.canvas.before:
@@ -956,15 +1265,77 @@ class RoundedButton(Button):
         self.bind(bg_color=self._update_color)
 
     def _update_rect(self, *args):
+        """Обновляет позицию и размер фона при изменении кнопки"""
         self._rect.pos = self.pos
         self._rect.size = self.size
         self.text_size = (self.width, None)
 
     def _update_color(self, *args):
+        """Обновляет цвет фона при изменении bg_color"""
         self._rect_color.rgba = self.bg_color
 
 
+class GradientButton(Button):
+    """
+    Современная кнопка с градиентным эффектом и тенью.
+    
+    ПРИМЕЧАНИЕ: В текущей версии не используется, оставлена для будущих обновлений.
+    """
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.background_normal = ''
+        self.background_down = ''
+        self.background_color = (0, 0, 0, 0)
+        self.color = (1, 1, 1, 1)
+        self.halign = 'center'
+        self.valign = 'middle'
+        
+        with self.canvas.before:
+            # Тень под кнопкой
+            self._shadow_color = Color(rgba=(0.1, 0.3, 0.6, 0.25))
+            self._shadow = RoundedRectangle(pos=(self.x, self.y - dp(4)), size=self.size, radius=[dp(20)])
+            # Градиент (симуляция двумя прямоугольниками)
+            self._grad1_color = Color(rgba=(0.1, 0.4, 0.9, 1))
+            self._grad1 = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(20)])
+            self._grad2_color = Color(rgba=(0.15, 0.5, 0.95, 0.8))
+            self._grad2 = RoundedRectangle(pos=(self.x, self.y + self.height * 0.5), 
+                                          size=(self.width, self.height * 0.5), 
+                                          radius=[0, 0, dp(20), dp(20)])
+        
+        self.bind(pos=self._update_graphics, size=self._update_graphics)
+        self.bind(state=self._on_state)
+    
+    def _update_graphics(self, *args):
+        """Обновляет графические элементы при изменении размера/позиции"""
+        self._shadow.pos = (self.x, self.y - dp(4))
+        self._shadow.size = self.size
+        self._grad1.pos = self.pos
+        self._grad1.size = self.size
+        self._grad2.pos = (self.x, self.y + self.height * 0.5)
+        self._grad2.size = (self.width, self.height * 0.5)
+        self.text_size = (self.width, None)
+    
+    def _on_state(self, instance, state):
+        """Анимация нажатия - поднимает/опускает тень"""
+        if state == 'down':
+            self._shadow.pos = (self.x, self.y - dp(1))
+            self._grad1_color.rgba = (0.08, 0.35, 0.8, 1)
+        else:
+            self._shadow.pos = (self.x, self.y - dp(4))
+            self._grad1_color.rgba = (0.1, 0.4, 0.9, 1)
+
+
 class IconButton(ButtonBehavior, Image):
+    """
+    Кнопка-иконка с поддержкой смены изображения при нажатии.
+    
+    Используется для небольших действий типа удаления, закрытия и т.д.
+    
+    Атрибуты:
+        default_source: Путь к изображению в нормальном состоянии
+        pressed_source: Путь к изображению при нажатии
+    """
     default_source = StringProperty('')
     pressed_source = StringProperty('')
 
@@ -977,10 +1348,12 @@ class IconButton(ButtonBehavior, Image):
         self._update_source(self, getattr(self, 'state', 'normal'))
 
     def on_default_source(self, instance, value):
+        """Устанавливает изображение по умолчанию"""
         if self.state != 'down' and value:
             self.source = value
 
     def _update_source(self, instance, state):
+        """Меняет изображение в зависимости от состояния кнопки"""
         if state == 'down' and self.pressed_source:
             self.source = self.pressed_source
         elif self.default_source:
@@ -988,6 +1361,18 @@ class IconButton(ButtonBehavior, Image):
 
 
 class IconToggleButton(ToggleButtonBehavior, Image):
+    """
+    Кнопка-иконка с поддержкой переключения (toggle).
+    
+    Используется в нижней навигации для переключения между табами.
+    Меняет цвет при активации.
+    
+    Атрибуты:
+        icon_source: Путь к файлу иконки
+        target_screen: Имя целевого экрана для переключения
+        active_color: Цвет иконки в активном состоянии (синий)
+        inactive_color: Цвет иконки в неактивном состоянии (серый)
+    """
     icon_source = StringProperty('')
     target_screen = StringProperty('')
     active_color = ListProperty([0.15, 0.55, 0.9, 1])
@@ -1004,16 +1389,19 @@ class IconToggleButton(ToggleButtonBehavior, Image):
             self.source = self.icon_source
 
     def on_icon_source(self, instance, value):
+        """Устанавливает иконку"""
         if value:
             self.source = value
 
     def _update_style(self, instance, state):
+        """Меняет цвет иконки в зависимости от состояния"""
         if state == 'down':
-            self.color = self.active_color
+            self.color = self.active_color  # Синий когда активна
         else:
-            self.color = self.inactive_color
+            self.color = self.inactive_color  # Серый когда неактивна
 
     def on_release(self):
+        """Переключает экран при нажатии"""
         super().on_release()
         if self.target_screen:
             app = App.get_running_app()
@@ -1023,6 +1411,27 @@ class IconToggleButton(ToggleButtonBehavior, Image):
                     main_screen.ids.tab_manager.current = self.target_screen
                 except Exception:
                     pass
+
+
+class SectionDivider(Widget):
+    """
+    Визуальный разделитель между секциями на финальном экране.
+    
+    Рисует толстую синюю горизонтальную линию для разделения
+    MC теста и развёрнутых ответов в финальном отчёте.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        with self.canvas:
+            self._line_color = Color(rgba=(0.15, 0.55, 0.9, 1))  # Основной синий цвет
+            # Линия толщиной 3dp для хорошей видимости
+            self._line = Rectangle(pos=(self.x + dp(8), self.y + self.height / 2 - dp(1)), size=(self.width - dp(16), dp(3)))
+        self.bind(pos=self._update_line, size=self._update_line)
+
+    def _update_line(self, *args):
+        """Обновляет позицию и размер линии при изменении виджета"""
+        self._line.pos = (self.x + dp(8), self.y + self.height / 2 - dp(1))
+        self._line.size = (self.width - dp(16), dp(3))
 
 
 class DifficultyButton(ToggleButton):
@@ -1079,13 +1488,31 @@ class OptionButton(Button):
         self.height = max(dp(60), self.texture_size[1] + dp(30))
 
     def set_selected(self, selected: bool):
+        """Устанавливает выбранное состояние кнопки"""
         self._bg_color.rgba = self.selected_color if selected else self.default_color
         self.color = (1, 1, 1, 1) if selected else (0, 0, 0, 1)
 
 
+# ============================================================================
+# КЛАССЫ ЭКРАНОВ - ОСНОВНЫЕ СТРАНИЦЫ ПРИЛОЖЕНИЯ
+# ============================================================================
+
 class MainScreen(Screen):
+    """
+    Главный экран приложения с тремя табами.
+    
+    Содержит:
+    - SavedScreen: Список сохранённых курсов
+    - SearchScreen: Поиск и создание новых курсов
+    - SettingsScreen: Настройки приложения
+    
+    Функции:
+    - Проверка подключения к сети каждые 30 секунд
+    - Синхронизация состояния навигации с текущим табом
+    """
+    
     def on_enter(self):
-        """Запускаем проверку сети при входе на экран"""
+        """Запускается при входе на экран"""
         self.check_network()
         # Повторяем проверку каждые 30 секунд
         self._network_check = Clock.schedule_interval(lambda dt: self.check_network(), 30)
@@ -1096,11 +1523,16 @@ class MainScreen(Screen):
             self._network_check.cancel()
     
     def check_network(self):
-        """Быстрая проверка подключения к сети"""
+        """
+        Быстрая проверка подключения к интернету.
+        
+        Проверяет доступность DNS Google (8.8.8.8:53) с таймаутом 2 секунды.
+        Обновляет иконку статуса в UI.
+        """
         def _check():
             try:
                 import socket
-                # Проверяем доступность DNS Google (быстро)
+                # Проверяем доступность DNS Google (быстро и надёжно)
                 socket.create_connection(("8.8.8.8", 53), timeout=2)
                 Clock.schedule_once(lambda dt: self._update_network_status(True))
             except:
@@ -1110,62 +1542,101 @@ class MainScreen(Screen):
         threading.Thread(target=_check, daemon=True).start()
     
     def _update_network_status(self, is_online):
+        """Обновляет иконку статуса сети в UI"""
         if is_online:
-            self.ids.network_status.text = '🌐'
-            self.ids.network_status.color = (0.3, 0.7, 0.3, 1)
+            self.ids.network_status.text = '🌐'  # Онлайн
+            self.ids.network_status.color = (0.3, 0.7, 0.3, 1)  # Зелёный
         else:
-            self.ids.network_status.text = '📵'
-            self.ids.network_status.color = (0.9, 0.3, 0.3, 1)
+            self.ids.network_status.text = '📵'  # Оффлайн
+            self.ids.network_status.color = (0.9, 0.3, 0.3, 1)  # Красный
 
     def on_kv_post(self, base_widget):
+        """Инициализация после создания UI из KV"""
         super().on_kv_post(base_widget)
         try:
+            # Собираем кнопки навигации для синхронизации
             self._nav_buttons = [
                 self.ids.nav_saved,
                 self.ids.nav_search,
                 self.ids.nav_settings
             ]
             tab_manager = self.ids.tab_manager
+            # Синхронизируем состояние кнопок при переключении табов
             tab_manager.bind(current=self._sync_nav_icons)
             self._sync_nav_icons(tab_manager, tab_manager.current)
         except Exception:
             self._nav_buttons = []
 
     def _sync_nav_icons(self, tab_manager, current):
+        """Синхронизирует состояние кнопок навигации с текущим табом"""
         for btn in getattr(self, '_nav_buttons', []):
             btn.state = 'down' if getattr(btn, 'target_screen', None) == current else 'normal'
 
+
 class SavedScreen(Screen):
+    """Экран со списком сохранённых курсов"""
     pass
+
 
 class SearchScreen(Screen):
+    """Экран поиска и создания новых курсов"""
     pass
+
 
 class SettingsScreen(Screen):
+    """Экран настроек приложения"""
     pass
 
+
 class LoadingScreen(Screen):
+    """
+    Экран загрузки с анимацией и интересными фактами.
+    
+    Показывается во время генерации курсов, тестов и оценки ответов.
+    Меняет интересный факт каждые 7 секунд.
+    """
+    
     def start_fact_cycle(self):
+        """Запускает цикл смены интересных фактов"""
         self.update_fact()
         self._fact_event = Clock.schedule_interval(self.update_fact, 7)
 
     def stop_fact_cycle(self):
+        """Останавливает цикл смены фактов"""
         if hasattr(self, '_fact_event'):
             self._fact_event.cancel()
 
     def update_fact(self, dt=None):
+        """Обновляет текст интересного факта"""
         fact = random.choice(INTERESTING_FACTS)
         self.ids.fact_label.text = f"Интересный факт:\n{fact}"
 
 
 class TheoryScreen(Screen):
+    """
+    Экран отображения теоретического материала.
+    
+    Показывает сгенерированную теорию перед началом теста.
+    Пользователь может изучить материал перед тестированием.
+    
+    Атрибуты:
+        theory_content: Текст теории (HTML разметка поддерживается)
+        meta_title: Название темы
+        meta_sub: Уровень сложности
+    """
     theory_content = StringProperty('')
     meta_title = StringProperty('')
     meta_sub = StringProperty('')
 
 
 class DotSpinner(BoxLayout):
-    """A tiny spinner made of three dots that pulse sequentially."""
+    """
+    Анимированный индикатор загрузки из трёх точек.
+    
+    Точки последовательно подсвечиваются синим цветом,
+    создавая эффект пульсации.
+    """
+    
     def __init__(self, **kwargs):
         super().__init__(orientation='horizontal', spacing=dp(8), size_hint=(None, None), **kwargs)
         self.size = (dp(120), dp(40))
@@ -1176,20 +1647,35 @@ class DotSpinner(BoxLayout):
         self._event = Clock.schedule_interval(self._pulse, 0.4)
 
     def _pulse(self, dt):
+        """Анимация пульсации - подсвечивает текущую точку"""
         for i, d in enumerate(self.dots):
             if i == self._idx:
-                d.color = (0.15, 0.55, 0.9, 1)
+                d.color = (0.15, 0.55, 0.9, 1)  # Синий - активная точка
             else:
-                d.color = (0.6,0.6,0.6,1)
+                d.color = (0.6,0.6,0.6,1)  # Серый - неактивные
         self._idx = (self._idx + 1) % len(self.dots)
 
     def on_parent(self, widget, parent):
-        # Stop animation when removed
+        """Останавливает анимацию при удалении виджета"""
         if parent is None and getattr(self, '_event', None):
             self._event.cancel()
 
 
 class QuizScreen(Screen):
+    """
+    Экран множественного выбора (MC тест).
+    
+    Показывает вопросы с 4 вариантами ответов.
+    Сохраняет историю ошибок для финального отчёта.
+    Запускает предзагрузку открытых вопросов в фоне.
+    
+    Атрибуты:
+        question_index: Индекс текущего вопроса
+        score: Количество правильных ответов
+        result_text: Текст результата после ответа
+        current_question_text: Текст текущего вопроса
+        wrong_explanations: Список ошибок для финального экрана
+    """
     question_index = NumericProperty(0)
     score = NumericProperty(0)
     result_text = StringProperty('')
@@ -1210,6 +1696,11 @@ class QuizScreen(Screen):
 
     def on_pre_enter(self, *args):
         self.load_question()
+        # Запускаем генерацию открытых вопросов заранее для ускорения
+        app = App.get_running_app()
+        if not getattr(app, 'open_questions_preloading', False):
+            app.open_questions_preloading = True
+            threading.Thread(target=app.preload_open_questions).start()
 
     def load_question(self):
         if not self.questions or self.question_index >= len(self.questions):
@@ -1292,10 +1783,21 @@ class QuizScreen(Screen):
         percent = 0
         if self.questions:
             percent = int(round(100 * self.score / len(self.questions)))
-        App.get_running_app().handle_quiz_result(self.score, len(self.questions), percent, self.get_error_explanations())
-        self.manager.current = 'final'
+        # Сохраняем результаты MC теста для финального отчёта
+        app = App.get_running_app()
+        app.mc_test_score = self.score
+        app.mc_test_total = len(self.questions)
+        app.mc_test_percent = percent
+        app.mc_test_errors = self.get_error_explanations()
+        # Переходим к открытым вопросам (они уже генерируются)
+        app.transition_to_open_questions()
 
     def reset_quiz(self):
+        """
+        Сбрасывает состояние теста для перезапуска.
+        
+        Обнуляет счётчик вопросов, очки, выбор и список ошибок.
+        """
         self.question_index = 0
         self.score = 0
         self.selected = None
@@ -1305,20 +1807,58 @@ class QuizScreen(Screen):
         self.load_question()
 
     def get_error_explanations(self):
+        """Возвращает список ошибок для финального отчёта"""
         return getattr(self, 'wrong_explanations', [])
 
 
+class OpenAnswerScreen(Screen):
+    """
+    Экран для развёрнутых ответов (open-ended questions).
+    
+    Пользователь вводит развёрнутый текстовый ответ,
+    который оценивается LLM по шкале 0-10.
+    Полная оценка и рекомендации показываются на финальном экране.
+    """
+    pass
+
+
 class FinalScreen(Screen):
+    """
+    Финальный экран с результатами обеих частей теста.
+    
+    Отображает:
+    - Общий процент и счёт
+    - Работу над ошибками для MC теста
+    - Работу над ошибками для развёрнутых ответов
+    - Быструю шпаргалку по теме
+    - Рекомендации для дальнейшего изучения
+    - Нижнюю навигацию (домой, поиск, настройки)
+    
+    Атрибуты:
+        score_text: Форматированная строка с результатами
+        note_text: Краткая шпаргалка
+        nav_visible: Видимость навигации (всегда True)
+    """
     score_text = StringProperty('')
     note_text = StringProperty('')
+    nav_visible = BooleanProperty(False)
 
     def set_score(self, score, total, percent):
+        """Устанавливает текст с общим результатом"""
         self.score_text = f'{percent}% ({score}/{total} правильных ответов)'
 
     def set_quick_note(self, text):
+        """Устанавливает краткую шпаргалку"""
         self.note_text = text or 'Быстрая шпаргалка пока отсутствует.'
 
     def set_followup_topics(self, topics, loading=False):
+        """
+        Отображает список рекомендованных тем для дальнейшего изучения.
+        
+        Args:
+            topics: Список названий тем
+            loading: Флаг загрузки (показывает "подготавливаются...")
+        """
         layout = self.ids.followup_topics_box
         layout.clear_widgets()
         if not topics:
@@ -1332,18 +1872,26 @@ class FinalScreen(Screen):
                 height=dp(30)
             ))
             return
+        # Создаём кнопки для каждой рекомендованной темы
         for topic in topics:
             btn = RoundedButton(
                 text=topic,
                 size_hint_y=None,
                 height=dp(48),
-                bg_color=(0.2, 0.55, 0.35, 1),
+                bg_color=(0.2, 0.55, 0.35, 1),  # Зелёный оттенок
                 font_size='16sp'
             )
             btn.bind(on_release=lambda inst, t=topic: App.get_running_app().start_followup_topic(t))
             layout.add_widget(btn)
 
     def set_error_explanations(self, errors):
+        """
+        Отображает список ошибок из обеих частей теста.
+        
+        Args:
+            errors: Список словарей с ошибками
+                   Может содержать {'divider': True} для визуального разделения секций
+        """
         layout = self.ids.error_explanations_box
         layout.clear_widgets()
         if not errors:
@@ -1357,58 +1905,107 @@ class FinalScreen(Screen):
             ))
             return
         for item in errors:
+            if item.get('divider'):
+                layout.add_widget(SectionDivider(size_hint_y=None, height=dp(22)))
+                continue
             question = item.get('question', 'Вопрос')
             correct = item.get('correct', '')
             selected = item.get('selected', '')
+            
+            # Пропускаем пустые разделители
+            if not question and not correct and not selected:
+                spacer = Widget(size_hint_y=None, height=dp(8))
+                layout.add_widget(spacer)
+                continue
+            
+            correct_answer = correct or 'не указан'
             label = Label(
-                text=f"[b]{question}[/b]\nПравильный ответ: {correct}\nВаш ответ: {selected}",
+                text=f"[b]{question}[/b]\nПравильный ответ: {correct_answer}",
                 markup=True,
                 halign='left',
                 valign='top',
                 color=(0.2, 0.2, 0.2, 1),
                 size_hint_y=None,
-                height=dp(20)
+                height=dp(80)
             )
-            label.bind(width=lambda inst, w: setattr(inst, 'text_size', (w - dp(20), None)))
-            label.bind(texture_size=lambda inst, size: setattr(inst, 'height', size[1] + dp(12)))
+            label.bind(width=lambda inst, w: setattr(inst, 'text_size', (w - dp(24), None)))
+            label.bind(texture_size=lambda inst, size: setattr(inst, 'height', max(dp(80), size[1] + dp(24))))
             layout.add_widget(label)
 
-    def set_delete_enabled(self, enabled):
-        btn = self.ids.delete_button
-        btn.disabled = not enabled
-        btn.opacity = 1 if enabled else 0.4
+    def on_scroll_y(self, scroll_y):
+        # show navigation when scrolled to bottom (scroll_y near 0)
+        threshold = 0.05
+        nav_should_show = scroll_y <= threshold
+        if self.nav_visible != nav_should_show:
+            self.nav_visible = nav_should_show
 
 
 class MyApp(App):
+    """
+    Главный класс приложения SmartTest.
+    
+    Управляет всей логикой приложения:
+    - Инициализация хранилищ данных (курсы, настройки, кеш)
+    - Генерация тестов и теории через LLM
+    - Переходы между экранами
+    - Кеширование часто используемых данных
+    - Предзагрузка открытых вопросов во время MC теста
+    
+    Атрибуты:
+        difficulty: Текущая сложность ('легкий', 'средний', 'сложный')
+        storage: CourseStorage для сохранения курсов
+        settings_store: JsonStore для настроек пользователя
+        open_questions_cache: Кеш открытых вопросов для быстрого доступа
+        mc_test_score/mc_test_total: Результаты MC теста для финального отчёта
+        preloaded_open_questions: Предзагруженные открытые вопросы
+    """
     difficulty = StringProperty('легкий')
 
     def build(self):
+        """
+        Инициализация приложения.
+        
+        Создаёт необходимые директории, инициализирует хранилища,
+        загружает кеш и строит UI из KV разметки.
+        
+        Returns:
+            Widget: Корневой виджет приложения (ScreenManager)
+        """
         print("[MAIN] MyApp.build() starting...")
         try:
-            # Use the application's private data directory for storage
+            # Используем директорию данных приложения (безопасное место для файлов)
             data_dir = self.user_data_dir
             print(f"[MAIN] user_data_dir: {data_dir}")
             if not os.path.exists(data_dir):
                 os.makedirs(data_dir)
                 print(f"[MAIN] Created data_dir")
 
-            courses_path = os.path.join(data_dir, 'courses.json')
-            settings_path = os.path.join(data_dir, 'settings.json')
-            self.topic_memory_file = os.path.join(data_dir, 'course_topics.json')
+            # Определяем пути к файлам хранения
+            courses_path = os.path.join(data_dir, 'courses.json')  # Все курсы и тесты
+            settings_path = os.path.join(data_dir, 'settings.json')  # Настройки пользователя
+            self.topic_memory_file = os.path.join(data_dir, 'course_topics.json')  # История тем
             self._last_api_key = None
-            self.last_material = ''
+            self.last_material = ''  # Последний загруженный материал
+            
+            # Путь к кешу открытых вопросов для ускорения генерации
+            self.open_questions_cache_path = os.path.join(data_dir, 'open_questions_cache.json')
+            self.open_questions_cache = self._load_open_questions_cache()
+            
             print(f"[MAIN] courses_path: {courses_path}")
             print(f"[MAIN] settings_path: {settings_path}")
             
+            # Создаём хранилище курсов
             print("[MAIN] Creating CourseStorage...")
             self.storage = CourseStorage(filename=courses_path)
             self._last_saved_meta = None
             print("[MAIN] CourseStorage created")
             
+            # Создаём хранилище настроек
             print("[MAIN] Creating JsonStore...")
             self.settings_store = JsonStore(settings_path)
             print("[MAIN] JsonStore created")
             
+            # Загружаем и строим UI из KV разметки
             print("[MAIN] Loading KV string...")
             root = Builder.load_string(KV)
             print("[MAIN] KV loaded successfully")
@@ -1421,109 +2018,139 @@ class MyApp(App):
             print(f"[MAIN] Traceback: {tb_module.format_exc()}")
             raise
 
+    def _load_open_questions_cache(self):
+        """
+        Загружает кеш открытых вопросов из файла.
+        
+        Кеш позволяет избежать повторной генерации одинаковых вопросов
+        для одной и той же темы и сложности.
+        
+        Returns:
+            dict: Словарь с кешированными вопросами {ключ: вопросы}
+                  Ключ имеет формат "{topic}|{difficulty}"
+        """
+        if not getattr(self, 'open_questions_cache_path', None):
+            return {}
+        try:
+            if os.path.exists(self.open_questions_cache_path):
+                with open(self.open_questions_cache_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return data
+        except Exception as e:
+            self.log(f"Ошибка загрузки кеша открытых вопросов: {e}")
+        return {}
+
+    def _save_open_questions_cache(self):
+        """
+        Сохраняет кеш открытых вопросов в файл.
+        
+        Вызывается автоматически после добавления новых вопросов в кеш.
+        """
+        if not getattr(self, 'open_questions_cache_path', None):
+            return
+        try:
+            with open(self.open_questions_cache_path, 'w', encoding='utf-8') as f:
+                json.dump(self.open_questions_cache, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            self.log(f"Ошибка сохранения кеша открытых вопросов: {e}")
+
+    def _get_open_questions_cache_key(self, topic):
+        """
+        Генерирует ключ кеша для открытых вопросов.
+        
+        Ключ формируется из темы и сложности для уникальной идентификации.
+        
+        Args:
+            topic: Тема курса
+            
+        Returns:
+            str: Ключ в формате "{topic_lowercase}|{difficulty}"
+        """
+        normalized_topic = (topic or '').strip().lower()
+        difficulty = getattr(self, 'difficulty', 'легкий') or 'легкий'
+        return f"{normalized_topic}|{difficulty}"
+
+    def get_cached_open_questions(self, topic):
+        """
+        Получает кешированные открытые вопросы для темы.
+        
+        Args:
+            topic: Тема курса
+            
+        Returns:
+            list|None: Список вопросов если найдены в кеше, иначе None
+        """
+        key = self._get_open_questions_cache_key(topic)
+        return self.open_questions_cache.get(key)
+
+    def cache_open_questions(self, topic, questions):
+        """
+        Сохраняет открытые вопросы в кеш.
+        
+        Args:
+            topic: Тема курса
+            questions: Список сгенерированных вопросов для кеширования
+        """
+        if not questions:
+            return
+        key = self._get_open_questions_cache_key(topic)
+        self.open_questions_cache[key] = questions
+        self._save_open_questions_cache()
+
     def log(self, message):
+        """
+        Логирует сообщение в консоль и UI.
+        
+        Args:
+            message: Текст сообщения для логирования
+        """
         print(message)
         try:
             main_screen = self.root.get_screen('main')
             settings_screen = main_screen.ids.tab_manager.get_screen('settings')
             log_label = settings_screen.ids.debug_log
-            log_label.text = f"{message}\n{log_label.text}"[:2000] # Keep last 2000 chars
+            # Сохраняем последние 2000 символов логов
+            log_label.text = f"{message}\n{log_label.text}"[:2000]
         except Exception:
             pass
 
     def load_settings_ui(self):
+        """
+        Загружает сохраненные настройки в UI.
+        
+        Заполняет поля ввода на экране настроек сохраненными значениями.
+        """
         main_screen = self.root.get_screen('main')
         settings_screen = main_screen.ids.tab_manager.get_screen('settings')
         
         if self.settings_store.exists('api'):
-            # Use .get with default to handle migration if needed, though 'key' was broken so likely not saved
+            # Загружаем API ключ из настроек
             data = self.settings_store.get('api')
             key = data.get('api_key', data.get('key', ''))
             settings_screen.ids.api_key_input.text = key
     
-    def _load_weather(self):
-        """Fetch weather for Ufa from wttr.in API"""
-        try:
-            import urllib.request
-            import ssl
-            
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            
-            url = "https://wttr.in/Ufa?format=j1"
-            req = urllib.request.Request(url, headers={'User-Agent': 'SmartTest/1.0'})
-            
-            with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
-                data = json.loads(response.read().decode('utf-8'))
-            
-            current = data.get('current_condition', [{}])[0]
-            temp_c = current.get('temp_C', '?')
-            feels_like = current.get('FeelsLikeC', '?')
-            humidity = current.get('humidity', '?')
-            wind_kmph = current.get('windspeedKmph', '?')
-            desc = current.get('weatherDesc', [{}])[0].get('value', 'Нет данных')
-            
-            # Weather icons based on description
-            desc_lower = desc.lower()
-            if 'sun' in desc_lower or 'clear' in desc_lower:
-                icon = '☀️'
-            elif 'cloud' in desc_lower or 'overcast' in desc_lower:
-                icon = '☁️'
-            elif 'rain' in desc_lower:
-                icon = '🌧️'
-            elif 'snow' in desc_lower:
-                icon = '❄️'
-            elif 'fog' in desc_lower or 'mist' in desc_lower:
-                icon = '🌫️'
-            else:
-                icon = '🌤️'
-            
-            # Get forecast for tomorrow
-            weather_list = data.get('weather', [])
-            tomorrow_text = ''
-            if len(weather_list) > 1:
-                tomorrow = weather_list[1]
-                t_max = tomorrow.get('maxtempC', '?')
-                t_min = tomorrow.get('mintempC', '?')
-                tomorrow_text = f"\nЗавтра: {t_min}°..{t_max}°C"
-            
-            weather_text = (
-                f"{icon} [b]{temp_c}°C[/b] (ощущ. {feels_like}°C)\n"
-                f"{desc}\n"
-                f"💧 {humidity}%  💨 {wind_kmph} км/ч{tomorrow_text}"
-            )
-            
-            Clock.schedule_once(lambda dt: self._update_weather_ui(weather_text))
-            
-        except Exception as e:
-            error_text = f"[color=ff6666]Не удалось загрузить: {str(e)[:40]}[/color]"
-            Clock.schedule_once(lambda dt: self._update_weather_ui(error_text))
-    
-    def _update_weather_ui(self, text):
-        try:
-            main_screen = self.root.get_screen('main')
-            settings_screen = main_screen.ids.tab_manager.get_screen('settings')
-            settings_screen.ids.weather_label.text = text
-        except Exception as e:
-            print(f"Error updating weather UI: {e}")
-
     def save_settings(self):
+        """
+        Сохраняет настройки из UI в хранилище.
+        
+        Показывает статус сохранения пользователю.
+        """
         try:
             main_screen = self.root.get_screen('main')
             settings_screen = main_screen.ids.tab_manager.get_screen('settings')
             key = settings_screen.ids.api_key_input.text.strip()
             
-            # Changed 'key' to 'api_key' to avoid conflict with Kivy's internal arguments
+            # Сохраняем API ключ
             self.settings_store.put('api', api_key=key)
             settings_screen.ids.status_label.text = "Настройки сохранены!"
+            # Очищаем сообщение через 2 секунды
             Clock.schedule_once(lambda dt: setattr(settings_screen.ids.status_label, 'text', ''), 2)
         except Exception as e:
             print(f"Error saving settings: {e}")
-            # Try to show error on screen if possible
+            # Показываем ошибку пользователю
             try:
-                # Show the first 20 chars of the error to fit in UI
-                err_msg = str(e)[:30]
+                err_msg = str(e)[:30]  # Первые 30 символов ошибки
                 settings_screen.ids.status_label.text = f"Ошибка: {err_msg}"
             except:
                 pass
@@ -1554,11 +2181,22 @@ class MyApp(App):
         if not topic:
             topic = "Общие знания"
         
+        # Переходим на экран загрузки и запускаем генерацию в отдельном потоке
         self.root.current = 'loading'
         threading.Thread(target=self.generate_quiz_thread, args=(topic, self.difficulty)).start()
 
     def generate_quiz_thread(self, topic, difficulty):
-        # Get API key from settings
+        """
+        Генерирует тест в отдельном потоке.
+        
+        Вызывает LLM для создания теории и вопросов.
+        Не блокирует UI во время генерации.
+        
+        Args:
+            topic: Тема для генерации
+            difficulty: Уровень сложности
+        """
+        # Получаем API ключ из настроек
         api_key = None
         if self.settings_store.exists('api'):
             data = self.settings_store.get('api')
@@ -1568,38 +2206,54 @@ class MyApp(App):
         self.log(f"API key available: {'Yes' if api_key else 'No'}")
         
         try:
+            # Вызываем LLM для генерации курса
             result = generate_quiz(topic, difficulty, api_key=api_key)
             self.log(f"Generation completed. Has error: {'error' in result}")
         except Exception as e:
             self.log(f"Exception during generation: {e}")
             result = None
-            
+        
+        # Возвращаемся в главный поток для обновления UI
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
 
     def on_generation_complete(self, result):
+        """
+        Обрабатывает результат генерации теста.
+        
+        Сохраняет курс в хранилище, подготавливает экраны,
+        переключает на экран теории или сразу на тест.
+        
+        Args:
+            result: Словарь с сгенерированным курсом {questions, theory, meta}
+        """
         if result and 'questions' in result:
             if 'error' in result and result['error']:
                 self.log(f"Generation error: {result['error']}")
             else:
                 self.log("Generation successful")
 
-            # Save the generated course
+            # Сохраняем сгенерированный курс в хранилище
             self.storage.save(result)
             
-            # Сохраняем вопросы в QuizScreen
+            # Загружаем вопросы в QuizScreen
             quiz_screen = self.root.get_screen('quiz')
             quiz_screen.questions = result['questions']
+            
+            # Сохраняем метаданные курса
             meta = result.get('meta', {})
             topic = meta.get('topic', '')
             difficulty = meta.get('difficulty', '')
             theory_text = result.get('theory', '') or ''
+            
+            # Создаём краткую заметку из первых 200 символов теории
             snippet = ' '.join(theory_text.splitlines())[:200]
             if snippet:
                 meta.setdefault('notes', {})['quick_hint'] = snippet
+            
             self._last_saved_meta = meta
             self.last_material = f"Тема: {topic}\n\n{theory_text}" if topic else theory_text
             
-            # Если есть теория, показываем её
+            # Если есть теория, показываем её перед тестом
             if 'theory' in result and result['theory']:
                 theory_screen = self.root.get_screen('theory')
                 theory_screen.theory_content = result['theory']
@@ -1631,6 +2285,92 @@ class MyApp(App):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def show_combined_results(self, open_score, open_max, open_percent, open_errors):
+        """
+        Показывает комбинированный отчёт о прохождении обеих частей.
+        
+        Объединяет результаты MC теста и открытых вопросов в один финальный отчёт
+        с визуальным разделением между секциями.
+        
+        Args:
+            open_score: Количество правильных развёрнутых ответов
+            open_max: Общее количество развёрнутых вопросов
+            open_percent: Процент правильных развёрнутых ответов
+            open_errors: Список ошибок из развёрнутых ответов
+        """
+        final_screen = self.root.get_screen('final')
+        
+        # Получаем данные MC теста, сохранённые ранее
+        mc_score = getattr(self, 'mc_test_score', 0)
+        mc_total = getattr(self, 'mc_test_total', 0)
+        mc_percent = getattr(self, 'mc_test_percent', 0)
+        mc_errors = getattr(self, 'mc_test_errors', [])
+        
+        # Вычисляем общий процент (среднее арифметическое)
+        total_percent = int((mc_percent + open_percent) / 2)
+        
+        # Устанавливаем общий заголовок с результатами
+        final_screen.set_score(mc_score + open_score, mc_total + open_max, total_percent)
+        
+        # Подготавливаем краткие заметки по теме
+        note_text = ''
+        topic = ''
+        difficulty = self.difficulty
+        if self._last_saved_meta:
+            topic = self._last_saved_meta.get('topic', '')
+            difficulty = self._last_saved_meta.get('difficulty', difficulty)
+            note_text = self._last_saved_meta.get('notes', {}).get('quick_hint', '')
+        if not note_text:
+            note_text = (self.last_material or '').strip()[:240]
+        final_screen.set_quick_note(note_text)
+        
+        # Комбинируем ошибки из двух разделов в один список
+        combined_errors = []
+        
+        # Добавляем заголовок и ошибки MC части
+        if mc_errors:
+            combined_errors.append({
+                'question': '═══ РАБОТА НАД ОШИБКАМИ: ТЕСТОВАЯ ЧАСТЬ ═══',
+                'selected': f'Результат: {mc_percent}% ({mc_score}/{mc_total})',
+                'correct': ''
+            })
+            combined_errors.extend(mc_errors)
+        
+        # Добавляем разделитель и заголовок для открытых вопросов
+        if open_errors:
+            if mc_errors:
+                # Визуальный разделитель между секциями
+                combined_errors.append({'divider': True})
+            combined_errors.append({
+                'question': '═══ РАБОТА НАД ОШИБКАМИ: РАЗВЁРНУТЫЕ ОТВЕТЫ ═══',
+                'selected': f'Результат: {open_percent}% ({open_score}/{open_max})',
+                'correct': ''
+            })
+            combined_errors.extend(open_errors)
+        
+        # Отображаем все ошибки в едином списке
+        final_screen.set_error_explanations(combined_errors)
+
+        # Сохраняем в историю
+        if topic and difficulty:
+            timestamp = datetime.utcnow().isoformat()
+            entry = {
+                'timestamp': timestamp,
+                'score_percent': total_percent,
+                'difficulty': difficulty,
+                'mc_score': f'{mc_score}/{mc_total}',
+                'open_score': f'{open_score}/{open_max}'
+            }
+            def updater(course):
+                meta = course.setdefault('meta', {})
+                history = meta.setdefault('history', [])
+                history.insert(0, entry)
+                meta.setdefault('notes', {})['quick_hint'] = note_text
+            self.storage.update_entry(topic, difficulty, updater)
+
+        self.adjust_difficulty(total_percent)
+        self.prepare_followup_topics()
+
     def handle_quiz_result(self, score, total, percent, errors=None):
         final_screen = self.root.get_screen('final')
         final_screen.set_score(score, total, percent)
@@ -1661,18 +2401,28 @@ class MyApp(App):
             self.storage.update_entry(topic, difficulty, updater)
 
         self.adjust_difficulty(percent)
-        final_screen.set_delete_enabled(bool(topic))
         self.prepare_followup_topics()
 
     def adjust_difficulty(self, percent):
+        """
+        Автоматически корректирует сложность на основе результата.
+        
+        Повышает сложность при результате >= 80%
+        Понижает сложность при результате <= 40%
+        
+        Args:
+            percent: Процент правильных ответов
+        """
         levels = ['легкий', 'средний', 'эксперт']
         try:
             current_idx = levels.index(self.difficulty)
         except ValueError:
             current_idx = 0
 
+        # Повышаем уровень при хорошем результате
         if percent >= 80 and current_idx < len(levels) - 1:
             current_idx += 1
+        # Понижаем при плохом результате
         elif percent <= 40 and current_idx > 0:
             current_idx -= 1
 
@@ -1681,7 +2431,284 @@ class MyApp(App):
             self.log(f"Адаптация сложности: {self.difficulty} → {new_level} (результат {percent}%)")
             self.difficulty = new_level
 
+    def preload_open_questions(self):
+        """
+        Предзагружает открытые вопросы во время прохождения MC теста.
+        
+        Запускается в отдельном потоке сразу при входе на экран MC теста.
+        Сначала проверяет кеш, затем генерирует новые вопросы если нужно.
+        Значительно ускоряет переход к развёрнутым ответам.
+        """
+        topic = ''
+        if self._last_saved_meta:
+            topic = self._last_saved_meta.get('topic', 'Общие знания')
+        if not topic:
+            topic = 'Общие знания'
+        
+        # Получаем API ключ для генерации
+        api_key = None
+        if self.settings_store.exists('api'):
+            data = self.settings_store.get('api')
+            api_key = data.get('api_key', data.get('key'))
+        
+        self.log(f"Предзагрузка открытых вопросов по теме: {topic}...")
+        
+        # Сначала проверяем кеш
+        cached = self.get_cached_open_questions(topic)
+        if cached:
+            # Вопросы найдены в кеше - используем их
+            self.preloaded_open_questions = cached
+            self.log("Открытые вопросы загружены из кеша")
+            return
+        
+        # Кеша нет - генерируем новые вопросы
+        try:
+            questions = generate_open_questions(topic, n=3, difficulty=self.difficulty, api_key=api_key)
+            self.preloaded_open_questions = questions
+            # Сохраняем в кеш для будущих использований
+            self.cache_open_questions(topic, questions)
+            self.log(f"Открытые вопросы предзагружены успешно")
+        except Exception as e:
+            self.log(f"Ошибка предзагрузки открытых вопросов: {e}")
+            self.preloaded_open_questions = []
+
+    def transition_to_open_questions(self):
+        """
+        Переход к открытым вопросам с проверкой готовности.
+        
+        Проверяет, загрузились ли вопросы в фоне. Если да - сразу показывает их,
+        если нет - показывает экран загрузки и ждёт готовности.
+        """
+        if hasattr(self, 'preloaded_open_questions'):
+            # Вопросы уже предзагружены - сразу показываем
+            self.on_open_questions_generated(self.preloaded_open_questions)
+        else:
+            # Показываем экран загрузки и ждём завершения предзагрузки
+            self.root.current = 'loading'
+            Clock.schedule_once(lambda dt: self.check_preload_ready(), 0.5)
+    
+    def check_preload_ready(self):
+        """
+        Периодически проверяет готовность предзагруженных вопросов.
+        
+        Вызывается каждые 0.5 секунд до тех пор, пока вопросы не будут готовы.
+        """
+        if hasattr(self, 'preloaded_open_questions'):
+            # Вопросы готовы - показываем экран с ними
+            self.on_open_questions_generated(self.preloaded_open_questions)
+        else:
+            # Продолжаем ждать
+            Clock.schedule_once(lambda dt: self.check_preload_ready(), 0.5)
+
+    def start_open_questions(self):
+        """
+        Запускает генерацию открытых вопросов после MC теста.
+        
+        Этот метод используется как резервный, если предзагрузка не сработала.
+        """
+        self.root.current = 'loading'
+        
+        # Получаем тему из последнего сохраненного курса
+        topic = ''
+        if self._last_saved_meta:
+            topic = self._last_saved_meta.get('topic', 'Общие знания')
+        if not topic:
+            topic = 'Общие знания'
+        
+        threading.Thread(target=self.generate_open_questions_thread, args=(topic,)).start()
+
+    def generate_open_questions_thread(self, topic):
+        """Генерируем открытые вопросы в отдельном потоке"""
+        api_key = None
+        if self.settings_store.exists('api'):
+            data = self.settings_store.get('api')
+            api_key = data.get('api_key', data.get('key'))
+        
+        self.log(f"Генерация открытых вопросов по теме: {topic}...")
+        cached = self.get_cached_open_questions(topic)
+        if cached:
+            self.log("Используем кешированные открытые вопросы")
+            Clock.schedule_once(lambda dt: self.on_open_questions_generated(cached))
+            return
+        try:
+            questions = generate_open_questions(topic, n=3, difficulty=self.difficulty, api_key=api_key)
+            self.cache_open_questions(topic, questions)
+            Clock.schedule_once(lambda dt: self.on_open_questions_generated(questions))
+        except Exception as e:
+            self.log(f"Ошибка генерации открытых вопросов: {e}")
+            Clock.schedule_once(lambda dt: self.on_open_questions_generated([]))
+
+    def on_open_questions_generated(self, questions):
+        """Обработка сгенерированных открытых вопросов"""
+        if not questions:
+            self.log("Не удалось сгенерировать открытые вопросы. Переход к результатам.")
+            # Показываем финальный экран с результатами MC теста
+            self.show_final_results()
+            return
+        
+        # Сохраняем открытые вопросы
+        self.open_questions = questions
+        self.current_open_idx = 0
+        self.open_answers_history = []
+        
+        # Переходим на экран открытых вопросов
+        self.show_open_question()
+        self.root.current = 'open_answer'
+
+    def show_open_question(self):
+        """Отображает текущий открытый вопрос"""
+        if not hasattr(self, 'open_questions') or self.current_open_idx >= len(self.open_questions):
+            # Все вопросы пройдены, показываем результаты
+            self.finish_open_session()
+            return
+
+        q = self.open_questions[self.current_open_idx]
+        screen = self.root.get_screen('open_answer')
+        
+        screen.ids.progress_label.text = f"Вопрос {self.current_open_idx + 1} из {len(self.open_questions)}"
+        screen.ids.question_label.text = q.get('question', 'Ошибка загрузки вопроса')
+        screen.ids.answer_input.text = ''
+        screen.ids.answer_input.readonly = False
+        screen.ids.feedback_label.text = ''
+        screen.ids.action_button.text = 'ОТПРАВИТЬ ✓'
+        screen.ids.action_button.disabled = False
+        screen.ids.skip_button.disabled = False
+
+    def handle_open_answer_action(self):
+        """Обрабатывает нажатие кнопки действия (ОТПРАВИТЬ/ДАЛЕЕ)"""
+        screen = self.root.get_screen('open_answer')
+        btn_text = screen.ids.action_button.text
+        
+        if 'ОТПРАВИТЬ' in btn_text:
+            # Режим отправки ответа
+            answer = screen.ids.answer_input.text.strip()
+            if not answer:
+                return
+            
+            # Блокируем интерфейс во время оценки
+            screen.ids.answer_input.readonly = True
+            screen.ids.action_button.disabled = True
+            screen.ids.action_button.text = 'ОЦЕНКА... ⏳'
+            screen.ids.skip_button.disabled = True
+            
+            # Получаем текущий вопрос и заметки к нему
+            q = self.open_questions[self.current_open_idx]
+            notes = q.get('notes', '')
+            
+            # Запускаем оценку в отдельном потоке
+            threading.Thread(target=self.evaluate_answer_thread, args=(q['question'], answer, notes)).start()
+            
+        elif 'ДАЛЕЕ' in btn_text:
+            # Режим перехода к следующему вопросу
+            self.next_open_question()
+
+    def evaluate_answer_thread(self, question, answer, notes):
+        """
+        Оценивает развёрнутый ответ через LLM в отдельном потоке.
+        
+        Не блокирует UI во время оценки, которая может занять несколько секунд.
+        
+        Args:
+            question: Текст вопроса
+            answer: Ответ пользователя
+            notes: Дополнительные заметки для оценки
+        """
+        api_key = None
+        if self.settings_store.exists('api'):
+            data = self.settings_store.get('api')
+            api_key = data.get('api_key', data.get('key'))
+            
+        try:
+            # Вызываем LLM для оценки ответа
+            result = evaluate_answer(question, answer, notes, api_key=api_key)
+            Clock.schedule_once(lambda dt: self.on_answer_evaluated(result, answer))
+        except Exception as e:
+            self.log(f"Ошибка оценки ответа: {e}")
+            Clock.schedule_once(lambda dt: self.on_answer_evaluated(None, answer))
+
+    def on_answer_evaluated(self, result, answer_text):
+        """
+        Отображает результат оценки ответа.
+        
+        Показывает только баллы без подробного разбора.
+        Полный разбор будет показан на финальном экране.
+        
+        Args:
+            result: Результат оценки от LLM {score, max_score, feedback, recommendations}
+            answer_text: Текст ответа пользователя
+        """
+        screen = self.root.get_screen('open_answer')
+        screen.ids.action_button.disabled = False
+        screen.ids.skip_button.disabled = False
+        
+        if not result:
+            # Ошибка оценки - даём возможность повторить
+            screen.ids.feedback_label.text = "[color=ff0000]❌ Ошибка оценки. Попробуйте еще раз.[/color]"
+            screen.ids.action_button.text = 'ОТПРАВИТЬ ✓'
+            screen.ids.answer_input.readonly = False
+            return
+
+        score = result.get('score', 0)
+        max_score = result.get('max_score', 10)
+        
+        # Показываем только оценку без детального разбора
+        feedback = f"[b][color=0d74d6]Оценка: {score}/{max_score} баллов[/color][/b]\n\n"
+        feedback += f"[color=666666]Подробный разбор будет в работе над ошибками[/color]"
+            
+        screen.ids.feedback_label.text = feedback
+        screen.ids.action_button.text = 'ДАЛЕЕ →'
+        
+        # Сохраняем историю ответа для финального отчёта
+        self.open_answers_history.append({
+            'question': self.open_questions[self.current_open_idx],
+            'answer': answer_text,
+            'evaluation': result
+        })
+
+    def skip_open_question(self):
+        """Пропускает текущий открытый вопрос"""
+        self.open_answers_history.append({
+            'question': self.open_questions[self.current_open_idx],
+            'answer': '',
+            'evaluation': {'score': 0, 'max_score': 10, 'commentary': 'Пропущено', 'suggested_improvements': ''}
+        })
+        self.next_open_question()
+
+    def next_open_question(self):
+        """Переходит к следующему открытому вопросу"""
+        self.current_open_idx += 1
+        self.show_open_question()
+
+    def finish_open_session(self):
+        """Завершает сессию открытых вопросов и показывает комбинированный отчёт"""
+        # Подсчитываем баллы за открытые вопросы
+        open_score = sum([item['evaluation'].get('score', 0) for item in self.open_answers_history])
+        open_max = len(self.open_answers_history) * 10
+        open_percent = int((open_score / open_max * 100) if open_max > 0 else 0)
+        
+        # Формируем список ошибок для открытых вопросов
+        open_errors = []
+        for item in self.open_answers_history:
+            eval_data = item['evaluation']
+            # Добавляем только вопросы с ошибками или неполным баллом
+            if eval_data.get('suggested_improvements') or eval_data.get('score', 10) < 10:
+                open_errors.append({
+                    'question': item['question'].get('question', '')[:60] + '...',  # Сокращаем длинные вопросы
+                    'selected': f"Ваша оценка: {eval_data.get('score', 0)}/10",
+                    'correct': eval_data.get('suggested_improvements', eval_data.get('commentary', ''))
+                })
+        
+        # Показываем комбинированный финальный экран с обеими секциями
+        self.show_combined_results(open_score, open_max, open_percent, open_errors)
+        self.root.current = 'final'
+
     def start_followup_topic(self, topic):
+        """
+        Начинает новый курс по рекомендованной теме.
+        
+        Args:
+            topic: Название темы для изучения
+        """
         main_screen = self.root.get_screen('main')
         main_screen.ids.tab_manager.current = 'search'
         search_screen = main_screen.ids.tab_manager.get_screen('search')
@@ -1690,6 +2717,9 @@ class MyApp(App):
         threading.Thread(target=self.generate_quiz_thread, args=(topic, self.difficulty)).start()
 
     def delete_current_course(self):
+        """
+        Удаляет текущий активный курс из истории.
+        """
         if not self._last_saved_meta:
             return
         topic = self._last_saved_meta.get('topic')
@@ -1699,23 +2729,27 @@ class MyApp(App):
         removed = self.storage.delete(topic, difficulty)
         if removed:
             self.log(f"Курс '{topic}' ({difficulty}) удалён из истории.")
-            final_screen = self.root.get_screen('final')
-            final_screen.set_delete_enabled(False)
             self._last_saved_meta = None
             self.load_saved_courses_ui()
 
     def delete_saved_course(self, topic, difficulty):
+        """
+        Удаляет сохранённый курс из истории.
+        
+        Args:
+            topic: Название темы курса
+            difficulty: Уровень сложности
+        """
         if not topic:
             return
         removed = self.storage.delete(topic, difficulty)
         if not removed:
             return
         self.log(f"Курс '{topic}' ({difficulty}) удалён из истории.")
+        # Если удаляем текущий активный курс, очищаем ссылку
         if self._last_saved_meta and self._last_saved_meta.get('topic') == topic and \
                 self._last_saved_meta.get('difficulty') == difficulty:
             self._last_saved_meta = None
-            final_screen = self.root.get_screen('final')
-            final_screen.set_delete_enabled(False)
         self.load_saved_courses_ui()
 
     def load_saved_courses_ui(self):
@@ -1744,34 +2778,83 @@ class MyApp(App):
         self.on_generation_complete(course)
 
     def start_quiz_from_theory(self):
+        """
+        Запускает тест с экрана теории.
+        
+        Вызывается кнопкой "Начать тест" на экране теории.
+        """
         self.start_quiz()
 
     def start_quiz(self):
+        """
+        Запускает MC тест и сбрасывает предзагрузку открытых вопросов.
+        
+        Инициирует новую предзагрузку открытых вопросов в фоне.
+        """
         quiz = self.root.get_screen('quiz')
         quiz.reset_quiz()
+        # Сбрасываем флаги предзагрузки для нового теста
+        self.open_questions_preloading = False
+        if hasattr(self, 'preloaded_open_questions'):
+            delattr(self, 'preloaded_open_questions')
         self.root.current = 'quiz'
 
     def restart_quiz(self):
+        """
+        Перезапускает MC тест с начала.
+        
+        Сбрасывает прогресс и начинает тест заново.
+        """
         quiz = self.root.get_screen('quiz')
         quiz.reset_quiz()
         self.root.current = 'quiz'
 
     def exit_to_main(self):
+        """
+        Возвращает на главный экран приложения.
+        
+        Обработчик для кнопки "Домой" в нижней навигации.
+        """
         if self.root:
             self.root.current = 'main'
 
     def return_to_theory(self):
+        """
+        Возвращает на экран теории.
+        
+        Используется для повторного чтения материала перед тестом.
+        """
         if self.root:
             self.root.current = 'theory'
 
+    def goto_search_tab(self):
+        """
+        Переключает на таб поиска на главном экране.
+        
+        Обработчик для кнопки "Поиск" в нижней навигации.
+        """
+        if not self.root:
+            return
+        self.root.current = 'main'
+        try:
+            main_screen = self.root.get_screen('main')
+            main_screen.ids.tab_manager.current = 'search'
+        except Exception:
+            pass
 
+
+# ============================================================================
+# ТОЧКА ВХОДА ПРИЛОЖЕНИЯ
+# ============================================================================
 if __name__ == '__main__':
     print("[MAIN] === Starting MyApp ===")
     try:
+        # Создаём и запускаем экземпляр приложения
         app = MyApp()
         print("[MAIN] MyApp instance created")
-        app.run()
+        app.run()  # Запускает главный цикл Kivy
     except Exception as e:
+        # Логируем критические ошибки при запуске
         print(f"[MAIN] FATAL ERROR: {e}")
         print(f"[MAIN] Traceback: {tb_module.format_exc()}")
         raise

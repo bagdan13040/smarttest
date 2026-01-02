@@ -609,12 +609,12 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     
     prompt = (
         f"Тема: '{topic}'. Сложность: '{difficulty}'. "
-        "1. Напиши ОБШИРНЫЙ и ПОДРОБНЫЙ теоретический материал. "
-        "Раздели текст на логические блоки с заголовками. "
-        "Используй теги [b]...[/b] для жирного шрифта и переносы строк \\n для форматирования. "
+        "1. Напиши теоретический материал объемом не менее 1000 слов, с глубиной и детализацией, как в полноценной статье Википедии. "
+        "Раздели его на логические разделы и подразделы, поясняй термины, приводи примеры, сравнения и исторический контекст там, где это уместно. "
+        "Используй теги [b]...[/b] для важных понятий и \n для параграфов/списков. "
         "НЕ используй Markdown (**, ##). "
         "2. Сгенерируй 10 вопросов с 4 вариантами ответов. "
-        "Верни ТОЛЬКО JSON объект. "
+        "Верни ТОЛЬКО JSON объект, без пояснений по ответам. "
         "Структура: {\"theory\": \"Текст теории...\", \"questions\": [{\"question\": \"...\", \"options\": [\"...\", ...], \"answer\": 0}]}"
     )
     
@@ -716,6 +716,134 @@ def generate_mock_quiz(topic, difficulty, error=None):
         ],
         "meta": {"topic": topic, "difficulty": difficulty}
     }
+
+def generate_open_questions(topic, n=5, difficulty='средний', api_key=None):
+    """Generate open-ended questions for the 'Teacher' mode."""
+    log(f"=== generate_open_questions() starting ===")
+    log(f"  Topic: {topic}")
+    
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    if not api_key:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+    
+    if not api_key:
+        return generate_mock_open_questions(topic, n, error="API ключ не найден")
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": "SmartTest/1.0",
+        "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
+        "X-Title": "SmartTest"
+    }
+
+    prompt = (
+        f"Тема: '{topic}'. Сложность: '{difficulty}'. "
+        f"Сгенерируй {n} открытых вопросов, требующих развернутого ответа (не тесты). "
+        "Для каждого вопроса укажи 'notes' — ключевые моменты, которые должны быть в ответе (для проверки). "
+        "Верни ТОЛЬКО JSON массив объектов. "
+        "Структура: [{\"id\": \"q1\", \"question\": \"Текст вопроса...\", \"notes\": \"Ключевые моменты...\"}, ...]"
+    )
+
+    data = {
+        "model": "xiaomi/mimo-v2-flash:free",
+        "messages": [
+            {"role": "system", "content": "Ты — API, возвращающий только сырой JSON массив."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+
+    try:
+        result = make_request(url, headers, data, timeout=60)
+        if 'choices' in result and len(result['choices']) > 0:
+            content = result['choices'][0]['message']['content']
+            content = content.replace('```json', '').replace('```', '').strip()
+            try:
+                questions = json.loads(content)
+                if isinstance(questions, list):
+                    return questions
+            except json.JSONDecodeError:
+                log(f"JSON parse error in open questions: {content[:200]}")
+    except Exception as e:
+        log(f"Error generating open questions: {e}")
+
+    return generate_mock_open_questions(topic, n, error="Ошибка генерации")
+
+def evaluate_answer(question_text, user_answer, notes="", api_key=None):
+    """Evaluate a user's answer to an open-ended question."""
+    log(f"=== evaluate_answer() starting ===")
+    
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    if not api_key:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+    
+    if not api_key:
+        return {
+            "score": 0,
+            "max_score": 10,
+            "commentary": "Оффлайн режим: не удалось проверить ответ через AI.",
+            "errors": [],
+            "suggested_improvements": "Проверьте подключение к интернету."
+        }
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": "SmartTest/1.0",
+        "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
+        "X-Title": "SmartTest"
+    }
+
+    prompt = (
+        f"Вопрос: \"{question_text}\"\n"
+        f"Ожидаемые моменты (notes): \"{notes}\"\n"
+        f"Ответ студента: \"{user_answer}\"\n\n"
+        "Оцени ответ студента по шкале от 0 до 10. "
+        "Дай комментарий, список ошибок (если есть) и предложения по улучшению. "
+        "Верни ТОЛЬКО JSON объект. "
+        "Структура: {\"score\": int, \"max_score\": 10, \"commentary\": \"...\", \"errors\": [\"...\"], \"suggested_improvements\": \"...\"}"
+    )
+
+    data = {
+        "model": "xiaomi/mimo-v2-flash:free",
+        "messages": [
+            {"role": "system", "content": "Ты — строгий, но справедливый преподаватель. Верни только JSON."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+
+    try:
+        result = make_request(url, headers, data, timeout=60)
+        if 'choices' in result and len(result['choices']) > 0:
+            content = result['choices'][0]['message']['content']
+            content = content.replace('```json', '').replace('```', '').strip()
+            try:
+                evaluation = json.loads(content)
+                if isinstance(evaluation, dict):
+                    return evaluation
+            except json.JSONDecodeError:
+                log(f"JSON parse error in evaluation: {content[:200]}")
+    except Exception as e:
+        log(f"Error evaluating answer: {e}")
+
+    return {
+        "score": 0,
+        "max_score": 10,
+        "commentary": "Ошибка при оценке ответа.",
+        "errors": ["Сбой соединения с AI"],
+        "suggested_improvements": "Попробуйте позже."
+    }
+
+def generate_mock_open_questions(topic, n, error=None):
+    """Fallback for open questions."""
+    return [
+        {
+            "id": f"mock_q_{i}",
+            "question": f"Расскажите подробно, что вы знаете о теме '{topic}' (Вопрос {i+1})?",
+            "notes": "Ожидается развернутый ответ с примерами."
+        }
+        for i in range(n)
+    ]
 
 if __name__ == "__main__":
     test_topic = "Python программирование"
