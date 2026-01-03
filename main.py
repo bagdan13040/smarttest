@@ -407,15 +407,7 @@ ScreenManager:
                 text_size: self.size
                 valign: 'middle'
             
-            Button:
-                text: 'AI'
-                size_hint: None, None
-                size: dp(30), dp(30)
-                background_normal: ''
-                background_color: 0.15, 0.55, 0.9, 1
-                color: 1, 1, 1, 1
-                bold: True
-                on_release: app.root.current = 'chat'
+            Widget:
 
             Label:
                 id: network_status
@@ -442,7 +434,7 @@ ScreenManager:
             size_hint_y: None
             height: dp(64)
             padding: [dp(12), dp(8), dp(12), dp(8)]
-            spacing: dp(32)
+            spacing: dp(20)  # Уменьшили для 4 кнопок
             canvas.before:
                 Color:
                     rgba: 0, 0, 0, 0
@@ -474,6 +466,17 @@ ScreenManager:
                     icon_source: 'assets/icons/free-icon-font-search-3917132.png'
                     target_screen: 'search'
                     group: 'main_nav'
+
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
+                IconToggleButton:
+                    id: nav_chat
+                    size: dp(34), dp(34)
+                    icon_source: 'assets/icons/messages.png'
+                    target_screen: 'chat'
+                    group: 'main_nav'
+                    on_release: app.root.current = 'chat'
 
             AnchorLayout:
                 anchor_x: 'center'
@@ -1054,47 +1057,65 @@ ScreenManager:
                 padding: [dp(10), dp(10)]
                 spacing: dp(10)
 
-        # Input Area
+        # Input Area: attach button, separate rounded input field, send button
         BoxLayout:
             size_hint_y: None
             height: dp(60)
-            padding: [dp(10), dp(5)]
+            padding: [dp(10), dp(8)]
             spacing: dp(10)
-            canvas.before:
-                Color:
-                    rgba: 0.95, 0.95, 0.95, 1
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
 
-            Button:
+            IconButton:
                 id: attach_btn
-                text: '📎'
-                font_size: '20sp'
                 size_hint: None, None
-                size: dp(45), dp(40)
+                size: dp(48), dp(48)
                 pos_hint: {'center_y': 0.5}
-                background_normal: ''
-                background_color: 0.15, 0.55, 0.9, 1
-                color: 1, 1, 1, 1
+                default_source: 'assets/icons/chat_attach_default.png'
+                pressed_source: 'assets/icons/chat_attach_pressed.png'
                 on_release: root.show_image_chooser()
 
-            TextInput:
-                id: message_input
-                hint_text: 'Сообщение...'
-                multiline: False
+            BoxLayout:
+                id: input_container
+                size_hint_x: 1
                 size_hint_y: None
-                height: dp(40)
+                height: dp(44)
                 pos_hint: {'center_y': 0.5}
-                background_color: 1, 1, 1, 1
-                padding: [dp(10), dp(10)]
+                padding: [dp(8), 0]
+                canvas.before:
+                    # Background for input field (rounded)
+                    Color:
+                        rgba: 0.95, 0.95, 0.95, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(12), dp(12), dp(12), dp(12)]
+                    # Outline (border) around the rounded input field
+                    Color:
+                        rgba: 0.78, 0.78, 0.78, 1
+                    Line:
+                        rounded_rectangle: [self.x, self.y, self.width, self.height, dp(12)]
+                        width: 1
 
-            Button:
-                text: '->'
+                TextInput:
+                    id: message_input
+                    hint_text: 'Сообщение...'
+                    multiline: False
+                    size_hint_x: 1
+                    size_hint_y: 1
+                    background_normal: ''
+                    background_active: ''
+                    background_color: 0, 0, 0, 0
+                    padding: [dp(6), dp(10)]
+                    foreground_color: 0, 0, 0, 1
+
+            IconButton:
+                id: send_btn
                 size_hint: None, None
-                size: dp(40), dp(40)
+                size: dp(32), dp(32)
                 pos_hint: {'center_y': 0.5}
+                default_source: 'assets/icons/paper-plane-top(1).png'
+                pressed_source: 'assets/icons/paper-plane-top(1).png'
                 on_release: root.send_message()
+                # No background fill: icon-only button
 
 <FinalScreen>:
     name: 'final'
@@ -2063,7 +2084,7 @@ class ChatScreen(Screen):
         text_input.text = ""
         image_path = self.selected_image
         self.selected_image = None
-        self.ids.attach_btn.text = "📎"  # Сбрасываем иконку
+        # Иконка автоматически сбрасывается на default_source
         
         threading.Thread(target=self._send_request_thread, args=(message, image_path)).start()
 
@@ -2170,7 +2191,8 @@ class ChatScreen(Screen):
                         path = selection[0]
                         print(f"[Chat] Selected image: {path}")
                         self.selected_image = path
-                        self.ids.attach_btn.text = "📷"
+                        # Визуальное подтверждение выбора
+                        print(f"[Chat] Image attached")
                 
                 # Запрашиваем разрешения на чтение файлов (Android 6+)
                 try:
@@ -2202,7 +2224,8 @@ class ChatScreen(Screen):
                         path = selection[0]
                         print(f"[Chat] Selected image: {path}")
                         self.selected_image = path
-                        self.ids.attach_btn.text = "📷"
+                        # Визуальное подтверждение выбора
+                        print(f"[Chat] Image attached")
                 
                 filechooser.open_file(
                     on_selection=on_file_selected,
@@ -2256,7 +2279,7 @@ class ChatScreen(Screen):
             path = text_input.text.strip()
             if path:
                 self.selected_image = path
-                self.ids.attach_btn.text = "📷"
+                print(f"[Chat] Image path set: {path}")
             popup.dismiss()
         
         def on_cancel(instance):
