@@ -8,6 +8,7 @@ import sys
 import traceback
 import socket
 import http.client
+import base64
 from pathlib import Path
 
 # Detailed logging
@@ -574,6 +575,161 @@ def make_request(url, headers, data, timeout=60):
     error_msg = f"Все методы HTTP не сработали: {'; '.join(errors)}"
     log(error_msg)
     raise Exception(error_msg)
+
+def encode_image_to_base64(image_path):
+    """
+    Кодирует изображение в base64 строку.
+    
+    Args:
+        image_path: Путь к файлу изображения
+        
+    Returns:
+        str: Base64-encoded строка изображения с префиксом data URL
+    """
+    try:
+        with open(image_path, 'rb') as image_file:
+            encoded = base64.b64encode(image_file.read()).decode('utf-8')
+            # Определяем MIME тип по расширению
+            extension = Path(image_path).suffix.lower()
+            mime_types = {
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp'
+            }
+            mime_type = mime_types.get(extension, 'image/jpeg')
+            return f"data:{mime_type};base64,{encoded}"
+    except Exception as e:
+        log(f"Error encoding image: {e}")
+        return None
+
+def chat_with_image(message, image_path=None, history=None, api_key=None, model="google/gemini-2.0-flash-exp:free"):
+    """
+    Отправляет сообщение и опциональное изображение в чат с AI.
+    
+    Args:
+        message: Текстовое сообщение пользователя
+        image_path: Путь к файлу изображения (опционально)
+        history: История сообщений (список словарей)
+        api_key: API ключ
+        model: Модель для использования
+        
+    Returns:
+        dict: Ответ от API
+    """
+    log(f"=== chat_with_image() starting ===")
+    log(f"  Message length: {len(message)}")
+    log(f"  Image provided: {image_path is not None}")
+    
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    
+    if not api_key:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+    
+    if api_key:
+        api_key = api_key.strip()
+    
+    if not api_key:
+        return {"error": "API ключ не найден"}
+        
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": "SmartTest/1.0",
+        "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
+        "X-Title": "SmartTest"
+    }
+    
+    # Формируем контент сообщения
+    content = [{"type": "text", "text": message}]
+    
+    if image_path:
+        image_url = encode_image_to_base64(image_path)
+        if image_url:
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": image_url
+                }
+            })
+        else:
+            log("Failed to encode image, sending text only")
+            
+    # Формируем историю сообщений
+    messages = []
+    if history:
+        # Очищаем историю от картинок, чтобы не перегружать контекст (или оставляем, если модель поддерживает)
+        # Для экономии токенов лучше отправлять картинку только в последнем сообщении
+        # Но если нужно контекстное общение по картинке, то нужно думать.
+        # Пока просто добавляем историю как есть, но без картинок в старых сообщениях (упрощение)
+        for msg in history:
+            role = msg.get('role')
+            text = msg.get('content')
+            if role and text:
+                messages.append({"role": role, "content": text})
+    
+    # Добавляем текущее сообщение
+    messages.append({"role": "user", "content": content})
+    
+    # Список запасных моделей с поддержкой изображений
+    fallback_models = [
+        "google/gemini-2.0-flash-exp:free",
+        "qwen/qwen-2-vl-7b-instruct:free",
+        "meta-llama/llama-3.2-11b-vision-instruct:free"
+    ]
+    
+    # Если указанная модель не в списке, добавляем её первой
+    if model not in fallback_models:
+        fallback_models.insert(0, model)
+    else:
+        # Ставим указанную модель первой
+        fallback_models.remove(model)
+        fallback_models.insert(0, model)
+    
+    last_error = None
+    
+    # Пробуем модели по очереди
+    for try_model in fallback_models:
+        data = {
+            "model": try_model,
+            "messages": messages
+        }
+        
+        try:
+            log(f"Trying model: {try_model}...")
+            result = make_request(url, headers, data, timeout=60)
+            
+            if 'choices' in result and len(result['choices']) > 0:
+                content = result['choices'][0]['message']['content']
+                log(f"Success with model: {try_model}")
+                return {"content": content, "role": "assistant"}
+            elif 'error' in result:
+                error_msg = result['error'].get('message', 'Unknown API error')
+                error_code = result['error'].get('code', 0)
+                log(f"Model {try_model} returned error {error_code}: {error_msg}")
+                
+                # Если 429 (rate limit), пробуем следующую модель
+                if error_code == 429:
+                    last_error = f"Модель {try_model} временно недоступна (превышен лимит)"
+                    continue
+                else:
+                    return {"error": error_msg}
+            else:
+                last_error = "Empty response from API"
+                continue
+                
+        except Exception as e:
+            log(f"Exception with model {try_model}: {e}")
+            last_error = str(e)
+            # Если ошибка 429 в исключении, пробуем следующую модель
+            if "429" in str(e):
+                continue
+            else:
+                return {"error": str(e)}
+    
+    # Все модели не сработали
+    return {"error": f"Все модели недоступны. Последняя ошибка: {last_error}"}
 
 def generate_quiz(topic, difficulty="средний", api_key=None):
     """Generate a quiz using OpenRouter API"""

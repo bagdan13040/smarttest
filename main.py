@@ -23,6 +23,12 @@ print(f"[MAIN] Platform: {sys.platform}")
 # Определяем, запущено ли приложение на Android
 # (в будущем можно добавить специфичную логику для мобильной версии)
 IS_ANDROID = False
+try:
+    from android.permissions import request_permissions, Permission
+    IS_ANDROID = True
+    print("[MAIN] Running on Android")
+except ImportError:
+    print("[MAIN] Running on Desktop")
 
 # ========================================
 # ИМПОРТЫ KIVY
@@ -80,12 +86,15 @@ print("[MAIN] Standard modules imported")
 # - generate_next_topics: предложение тем для углубления
 print("[MAIN] Importing llm module...")
 try:
-    from llm import generate_quiz, generate_next_topics, get_course_topics, generate_open_questions, evaluate_answer
+    from llm import generate_quiz, generate_next_topics, get_course_topics, generate_open_questions, evaluate_answer, chat_with_image
     print("[MAIN] llm module imported successfully")
 except Exception as e:
     print(f"[MAIN] Error importing llm: {e}")
     print(f"[MAIN] Traceback: {tb_module.format_exc()}")
     # Fallback функции если LLM модуль не загружен
+    def chat_with_image(message, image_path=None, history=None, api_key=None, model="google/gemini-2.0-flash-exp:free"):
+        return {"content": "Ошибка: модуль LLM не загружен.", "role": "assistant"}
+
     def generate_quiz(topic, difficulty):
         return {
             "theory": f"Ошибка загрузки модуля LLM: {e}. Проверьте логи.",
@@ -348,6 +357,7 @@ ScreenManager:
     TheoryScreen:
     QuizScreen:
     OpenAnswerScreen:
+    ChatScreen:
     FinalScreen:
 
 # NavButton - Кнопка нижней навигации (табы)
@@ -397,6 +407,16 @@ ScreenManager:
                 text_size: self.size
                 valign: 'middle'
             
+            Button:
+                text: 'AI'
+                size_hint: None, None
+                size: dp(30), dp(30)
+                background_normal: ''
+                background_color: 0.15, 0.55, 0.9, 1
+                color: 1, 1, 1, 1
+                bold: True
+                on_release: app.root.current = 'chat'
+
             Label:
                 id: network_status
                 text: '⚡'  # Иконка статуса подключения
@@ -988,6 +1008,93 @@ ScreenManager:
         Widget:
             size_hint_y: None
             height: dp(10)
+
+<ChatScreen>:
+    name: 'chat'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [0, 0, 0, dp(10)]
+        
+        # Header
+        BoxLayout:
+            size_hint_y: None
+            height: dp(50)
+            padding: [dp(10), 0]
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            
+            IconButton:
+                size_hint: None, None
+                size: dp(36), dp(36)
+                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                on_release: app.root.current = 'main'
+            
+            Label:
+                text: 'AI Чат (Vision)'
+                color: 0.15, 0.55, 0.9, 1
+                font_size: '18sp'
+                bold: True
+                halign: 'center'
+                valign: 'middle'
+                text_size: self.size
+
+        # Chat History
+        ScrollView:
+            id: chat_scroll
+            BoxLayout:
+                id: chat_list
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                padding: [dp(10), dp(10)]
+                spacing: dp(10)
+
+        # Input Area
+        BoxLayout:
+            size_hint_y: None
+            height: dp(60)
+            padding: [dp(10), dp(5)]
+            spacing: dp(10)
+            canvas.before:
+                Color:
+                    rgba: 0.95, 0.95, 0.95, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            Button:
+                id: attach_btn
+                text: '📎'
+                font_size: '20sp'
+                size_hint: None, None
+                size: dp(45), dp(40)
+                pos_hint: {'center_y': 0.5}
+                background_normal: ''
+                background_color: 0.15, 0.55, 0.9, 1
+                color: 1, 1, 1, 1
+                on_release: root.show_image_chooser()
+
+            TextInput:
+                id: message_input
+                hint_text: 'Сообщение...'
+                multiline: False
+                size_hint_y: None
+                height: dp(40)
+                pos_hint: {'center_y': 0.5}
+                background_color: 1, 1, 1, 1
+                padding: [dp(10), dp(10)]
+
+            Button:
+                text: '->'
+                size_hint: None, None
+                size: dp(40), dp(40)
+                pos_hint: {'center_y': 0.5}
+                on_release: root.send_message()
 
 <FinalScreen>:
     name: 'final'
@@ -1939,6 +2046,225 @@ class FinalScreen(Screen):
         if self.nav_visible != nav_should_show:
             self.nav_visible = nav_should_show
 
+
+class ChatScreen(Screen):
+    chat_history = ListProperty([])
+    selected_image = StringProperty(None, allownone=True)
+
+    def send_message(self):
+        text_input = self.ids.message_input
+        message = text_input.text.strip()
+        
+        if not message and not self.selected_image:
+            return
+
+        self.add_message(message, "user", self.selected_image)
+        
+        text_input.text = ""
+        image_path = self.selected_image
+        self.selected_image = None
+        self.ids.attach_btn.text = "📎"  # Сбрасываем иконку
+        
+        threading.Thread(target=self._send_request_thread, args=(message, image_path)).start()
+
+    def _send_request_thread(self, message, image_path):
+        app = App.get_running_app()
+        api_key = None
+        
+        # Получаем API ключ из настроек (правильный путь к хранилищу)
+        if hasattr(app, 'settings_store') and app.settings_store.exists('api'):
+            data = app.settings_store.get('api')
+            api_key = data.get('api_key', data.get('key'))
+        
+        if not api_key:
+            api_key = os.getenv("OPENROUTER_API_KEY")
+
+        # Fallback/Cleanup
+        if api_key:
+            api_key = api_key.strip()
+        
+        # Проверяем корректность ключа
+        if not api_key or not api_key.startswith("sk-or-"):
+             print("[Chat] WARNING: No valid API key found!")
+             Clock.schedule_once(lambda dt: self.on_response({"error": "API ключ не настроен. Перейдите в Настройки и сохраните ключ OpenRouter."}))
+             return
+
+        history = []
+        for msg in self.chat_history[-10:]:
+             history.append({'role': msg['role'], 'content': msg['text']})
+
+        print(f"[Chat] Sending request with key: {api_key[:10]}...")
+        response = chat_with_image(message, image_path, history=history, api_key=api_key)
+        
+        Clock.schedule_once(lambda dt: self.on_response(response))
+
+    def on_response(self, response):
+        if 'error' in response:
+            self.add_message(f"Ошибка: {response['error']}", "system")
+        else:
+            self.add_message(response['content'], "assistant")
+
+    def add_message(self, text, role, image=None):
+        self.chat_history.append({'role': role, 'text': text, 'image': image})
+        
+        # Контейнер для сообщения
+        msg_box = BoxLayout(orientation='vertical', size_hint_y=None, padding=[10, 10], spacing=5)
+        
+        # Фон сообщения (визуальное выделение)
+        with msg_box.canvas.before:
+            Color(*((0.8, 0.9, 1, 1) if role == 'user' else (1, 1, 1, 1)))
+            RoundedRectangle(pos=msg_box.pos, size=msg_box.size, radius=[10])
+            
+        # Обновление фона при изменении размера/позиции
+        def update_rect(instance, value):
+            instance.canvas.before.children[2].pos = instance.pos
+            instance.canvas.before.children[2].size = instance.size
+        msg_box.bind(pos=update_rect, size=update_rect)
+
+        total_height = dp(20) # Padding
+
+        if image:
+            try:
+                img = Image(source=image, size_hint_y=None, height=dp(200), allow_stretch=True, keep_ratio=True)
+                msg_box.add_widget(img)
+                total_height += dp(200) + dp(5)
+            except Exception as e:
+                print(f"Error loading image: {e}")
+
+        if text:
+            lbl = Label(text=text, size_hint_y=None, color=(0,0,0,1), markup=True)
+            lbl.bind(width=lambda *x: setattr(lbl, 'text_size', (lbl.width, None)))
+            lbl.bind(texture_size=lambda *x: setattr(lbl, 'height', lbl.texture_size[1]))
+            msg_box.add_widget(lbl)
+            # Мы не знаем высоту сразу, поэтому используем bind
+            def update_height(instance, value):
+                # Пересчитываем высоту контейнера
+                h = dp(20)
+                for child in msg_box.children:
+                    h += child.height + msg_box.spacing
+                msg_box.height = h
+            lbl.bind(texture_size=update_height)
+            total_height += dp(40) # Начальная оценка
+
+        msg_box.height = total_height
+
+        # Обертка для выравнивания
+        wrapper = AnchorLayout(anchor_x='right' if role == 'user' else 'left', size_hint_y=None)
+        wrapper.add_widget(msg_box)
+        
+        # Связываем высоту обертки с высотой сообщения
+        msg_box.bind(height=lambda *x: setattr(wrapper, 'height', msg_box.height))
+        
+        self.ids.chat_list.add_widget(wrapper)
+
+    def show_image_chooser(self):
+        """Показывает выбор изображения: галерея на Android, диалог на Desktop"""
+        if IS_ANDROID:
+            # На Android используем нативный file picker
+            try:
+                from plyer import filechooser
+                
+                def on_file_selected(selection):
+                    """Callback когда пользователь выбрал файл"""
+                    if selection and len(selection) > 0:
+                        path = selection[0]
+                        print(f"[Chat] Selected image: {path}")
+                        self.selected_image = path
+                        self.ids.attach_btn.text = "📷"
+                
+                # Запрашиваем разрешения на чтение файлов (Android 6+)
+                try:
+                    from android.permissions import request_permissions, Permission
+                    request_permissions([
+                        Permission.READ_EXTERNAL_STORAGE,
+                        Permission.WRITE_EXTERNAL_STORAGE
+                    ])
+                except Exception as e:
+                    print(f"[Chat] Permissions error: {e}")
+                
+                # Открываем file picker с фильтром по изображениям
+                filechooser.open_file(
+                    on_selection=on_file_selected,
+                    filters=["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.bmp"],
+                    mime_type="image/*"
+                )
+            except Exception as e:
+                print(f"[Chat] Error opening file chooser: {e}")
+                # Fallback на текстовый ввод
+                self._show_text_input_chooser()
+        else:
+            # На Desktop показываем диалог с вводом пути или используем plyer
+            try:
+                from plyer import filechooser
+                
+                def on_file_selected(selection):
+                    if selection and len(selection) > 0:
+                        path = selection[0]
+                        print(f"[Chat] Selected image: {path}")
+                        self.selected_image = path
+                        self.ids.attach_btn.text = "📷"
+                
+                filechooser.open_file(
+                    on_selection=on_file_selected,
+                    filters=[
+                        ("Images", "*.jpg;*.jpeg;*.png;*.gif;*.webp;*.bmp"),
+                        ("All files", "*.*")
+                    ]
+                )
+            except Exception as e:
+                print(f"[Chat] Plyer not available, using text input: {e}")
+                self._show_text_input_chooser()
+    
+    def _show_text_input_chooser(self):
+        """Fallback метод: текстовый ввод URL или пути"""
+        from kivy.uix.popup import Popup
+        content = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        # Подсказка с примерами
+        hint_label = Label(
+            text='Введите URL или локальный путь к изображению',
+            size_hint_y=None,
+            height=dp(30),
+            color=(0.5, 0.5, 0.5, 1),
+            font_size='12sp'
+        )
+        text_input = TextInput(
+            hint_text='https://example.com/image.jpg или /sdcard/image.jpg',
+            multiline=False,
+            size_hint_y=None,
+            height=dp(40)
+        )
+        
+        btn_box = BoxLayout(size_hint_y=None, height=dp(40), spacing=10)
+        cancel_btn = Button(text='Отмена')
+        ok_btn = Button(text='OK')
+        btn_box.add_widget(cancel_btn)
+        btn_box.add_widget(ok_btn)
+        
+        content.add_widget(hint_label)
+        content.add_widget(text_input)
+        content.add_widget(btn_box)
+        
+        popup = Popup(
+            title='Добавить изображение',
+            content=content,
+            size_hint=(0.9, None),
+            height=dp(200)
+        )
+        
+        def on_select(instance):
+            path = text_input.text.strip()
+            if path:
+                self.selected_image = path
+                self.ids.attach_btn.text = "📷"
+            popup.dismiss()
+        
+        def on_cancel(instance):
+            popup.dismiss()
+            
+        ok_btn.bind(on_release=on_select)
+        cancel_btn.bind(on_release=on_cancel)
+        popup.open()
 
 class MyApp(App):
     """

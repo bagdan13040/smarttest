@@ -22,7 +22,8 @@ version = 1.4
 
 # (list) Application requirements
 # requests + certifi needed for proper SSL/DNS resolution on Android
-requirements = python3,kivy,python-dotenv,certifi,pyjnius
+# plyer for native features (file picker, camera, etc.)
+requirements = python3,kivy,python-dotenv,certifi,pyjnius,plyer
 
 # (str) Icon of the application
 icon.filename = assets/icon.png
@@ -60,7 +61,8 @@ p4a.branch = master
 p4a.python_version = 3.10
 
 # Android permissions (MUST be in [app] section!)
-android.permissions = INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE
+# READ_MEDIA_IMAGES - for Android 13+ (API 33+) to access images
+android.permissions = INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, READ_EXTERNAL_STORAGE, READ_MEDIA_IMAGES
 
 [buildozer]
 log_level = 2

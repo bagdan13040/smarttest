@@ -3,3 +3,6 @@ kivy==2.2.1
 # Для optional Material UI компонентов можно раскомментировать:
 # kivymd==1.2.0
 python-dotenv
+
+# Plyer - для доступа к нативным функциям (file picker, camera, и т.д.)
+plyer
