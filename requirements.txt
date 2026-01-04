@@ -1,8 +1,15 @@
 ﻿# Используем совместимую версию Kivy
 kivy==2.2.1
 # Для optional Material UI компонентов можно раскомментировать:
-# kivymd==1.2.0
+kivymd==1.2.0
 python-dotenv
 
 # Plyer - для доступа к нативным функциям (file picker, camera, и т.д.)
 plyer
+
+# Pyjnius - для работы с Java на Android (галерея, Intent API)
+pyjnius
+
+# HTTP client and SSL certs used by llm and networking
+requests
+certifi

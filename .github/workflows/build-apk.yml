@@ -1,0 +1,36 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build APK (debug)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Buildozer and dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade buildozer
+
+      - name: Run Buildozer (android debug)
+        uses: craigmorten/buildozer-action@v2
+        with:
+          buildozer_spec: 'buildozer.spec'
+          target: 'android debug'
+
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smarttest-apk
+          path: bin/*.apk

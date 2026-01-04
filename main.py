@@ -37,6 +37,9 @@ except ImportError:
 try:
     print("[MAIN] UI widgets imported")
     from kivy.app import App  # Основной класс приложения
+    from kivymd.app import MDApp # KivyMD App
+    from kivymd.uix.button import MDIconButton # KivyMD Icon Button
+    from kivymd.uix.label import MDIcon # KivyMD Icon
     from kivy.lang import Builder  # Парсер KV языка для описания UI
     from kivy.core.window import Window  # Управление окном приложения
     from kivy.uix.screenmanager import ScreenManager, Screen  # Менеджер экранов
@@ -350,6 +353,24 @@ class CourseStorage:
 KV = """
 #:import dp kivy.metrics.dp
 
+#:set color_bg (0.95, 0.94, 0.92, 1)
+#:set color_card (1, 1, 1, 1)
+#:set color_primary (0.15, 0.55, 0.9, 1)
+#:set color_success_bg (0.82, 0.98, 0.87, 1)
+#:set color_success (0.01, 0.6, 0.33, 1)
+#:set color_orange (0.86, 0.41, 0.01, 1)
+#:set color_text_gray (0.4, 0.44, 0.52, 1)
+#:set color_text_dark (0.1, 0.1, 0.1, 1)
+
+<Card@BoxLayout>:
+    canvas.before:
+        Color:
+            rgba: color_card
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(20)]
+
 # Главный менеджер экранов - переключает между основными экранами приложения
 ScreenManager:
     MainScreen:
@@ -357,7 +378,6 @@ ScreenManager:
     TheoryScreen:
     QuizScreen:
     OpenAnswerScreen:
-    ChatScreen:
     FinalScreen:
 
 # NavButton - Кнопка нижней навигации (табы)
@@ -409,15 +429,6 @@ ScreenManager:
             
             Widget:
 
-            Label:
-                id: network_status
-                text: '⚡'  # Иконка статуса подключения
-                font_size: '18sp'
-                color: 0.5, 0.5, 0.5, 1
-                halign: 'right'
-                text_size: self.size
-                valign: 'middle'
-
         # Менеджер табов - переключает между сохраненными, поиском, настройками
         ScreenManager:
             id: tab_manager
@@ -426,6 +437,8 @@ ScreenManager:
                 name: 'saved'
             SearchScreen:
                 name: 'search'
+            ChatScreen:
+                name: 'chat'
             SettingsScreen:
                 name: 'settings'
                 
@@ -453,7 +466,7 @@ ScreenManager:
                 IconToggleButton:
                     id: nav_saved
                     size: dp(34), dp(34)
-                    icon_source: 'assets/icons/free-icon-font-home-3917033.png'
+                    icon_source: 'home'
                     target_screen: 'saved'
                     group: 'main_nav'
 
@@ -463,7 +476,7 @@ ScreenManager:
                 IconToggleButton:
                     id: nav_search
                     size: dp(34), dp(34)
-                    icon_source: 'assets/icons/free-icon-font-search-3917132.png'
+                    icon_source: 'magnify'
                     target_screen: 'search'
                     group: 'main_nav'
 
@@ -473,10 +486,9 @@ ScreenManager:
                 IconToggleButton:
                     id: nav_chat
                     size: dp(34), dp(34)
-                    icon_source: 'assets/icons/messages.png'
+                    icon_source: 'chat'
                     target_screen: 'chat'
                     group: 'main_nav'
-                    on_release: app.root.current = 'chat'
 
             AnchorLayout:
                 anchor_x: 'center'
@@ -484,7 +496,7 @@ ScreenManager:
                 IconToggleButton:
                     id: nav_settings
                     size: dp(34), dp(34)
-                    icon_source: 'assets/icons/free-icon-font-settings-sliders-3917103.png'
+                    icon_source: 'cog'
                     target_screen: 'settings'
                     group: 'main_nav'
 
@@ -700,8 +712,8 @@ ScreenManager:
             IconButton:
                 size_hint: None, None
                 size: dp(36), dp(36)
-                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                default_source: 'arrow-left'
+                pressed_source: 'arrow-left'
                 on_release: app.root.current = 'main'
                 canvas.before:
                     Color:
@@ -812,65 +824,90 @@ ScreenManager:
     name: 'quiz'
     question_index: 0
     score: 0
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(16)
-        spacing: dp(12)
+        padding: [dp(20), dp(16), dp(20), dp(16)]
+        spacing: dp(24)
 
+        # Progress Bar with percentage
         BoxLayout:
             size_hint_y: None
-            height: dp(50)
-            spacing: dp(10)
+            height: dp(40)
+            spacing: dp(12)
             
-            IconButton:
-                size_hint: None, None
-                size: dp(36), dp(36)
-                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                on_release: app.root.current = 'main'
-                canvas.before:
+            Widget:
+                size_hint_y: None
+                height: dp(8)
+                canvas:
                     Color:
-                        rgba: (0.9, 0.9, 0.9, 1)
+                        rgba: (0.85, 0.85, 0.85, 1)
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [dp(12)]
+                        radius: [dp(4)]
+                    Color:
+                        rgba: color_primary
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: (self.width * ((root.question_index + 1) / max(1, len(root.questions))), self.height) if root.questions else (0, self.height)
+                        radius: [dp(4)]
+            
+            Label:
+                text: str(int(((root.question_index + 1) / max(1, len(root.questions))) * 100)) + '%' if root.questions else '0%'
+                color: color_text_gray
+                font_size: '14sp'
+                size_hint_x: None
+                width: dp(50)
+                halign: 'right'
+                valign: 'middle'
 
-            Widget:
+        # Question header
+        Label:
+            text: 'ВОПРОС ' + str(root.question_index + 1) + ' ИЗ ' + str(len(root.questions))
+            color: color_text_gray
+            font_size: '11sp'
+            bold: True
+            size_hint_y: None
+            height: dp(20)
+            halign: 'left'
+            text_size: self.width, None
 
+        # Question text
         Label:
             id: question_label
             text: root.current_question_text
-            color: 0.15, 0.55, 0.9, 1
-            font_size: '22sp'
+            color: color_text_dark
+            font_size: '20sp'
             bold: True
-            text_size: self.width - dp(30), None
-            halign: 'center'
-            valign: 'middle'
-            size_hint_y: 0.35
-
-        Label:
-            text: str(root.question_index + 1) + '/' + str(len(root.questions))
-            color: 0.5, 0.5, 0.5, 1
+            text_size: self.width, None
+            halign: 'left'
+            valign: 'top'
             size_hint_y: None
-            height: dp(30)
-            halign: 'center'
-            font_size: '16sp'
+            height: self.texture_size[1]
 
+        # Answer options
         GridLayout:
             id: options_box
             cols: 1
-            size_hint_y: None
-            height: self.minimum_height
+            size_hint_y: 1
             spacing: dp(12)
 
+        # Result label at bottom
         Label:
             id: result_label
             text: root.result_text
             size_hint_y: None
-            height: self.texture_size[1]
+            height: self.texture_size[1] if root.result_text else dp(10)
             color: 0.25, 0.25, 0.25, 1
-            font_size: '16sp'
+            font_size: '14sp'
+            halign: 'center'
         
         Widget:
 
@@ -889,8 +926,8 @@ ScreenManager:
             IconButton:
                 size_hint: None, None
                 size: dp(36), dp(36)
-                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                default_source: 'arrow-left'
+                pressed_source: 'arrow-left'
                 on_release: app.root.current = 'main'
                 canvas.before:
                     Color:
@@ -1030,13 +1067,6 @@ ScreenManager:
                     pos: self.pos
                     size: self.size
             
-            IconButton:
-                size_hint: None, None
-                size: dp(36), dp(36)
-                default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                on_release: app.root.current = 'main'
-            
             Label:
                 text: 'AI Чат (Vision)'
                 color: 0.15, 0.55, 0.9, 1
@@ -1069,8 +1099,8 @@ ScreenManager:
                 size_hint: None, None
                 size: dp(48), dp(48)
                 pos_hint: {'center_y': 0.5}
-                default_source: 'assets/icons/chat_attach_default.png'
-                pressed_source: 'assets/icons/chat_attach_pressed.png'
+                default_source: 'paperclip'
+                pressed_source: 'paperclip'
                 on_release: root.show_image_chooser()
 
             BoxLayout:
@@ -1112,16 +1142,23 @@ ScreenManager:
                 size_hint: None, None
                 size: dp(32), dp(32)
                 pos_hint: {'center_y': 0.5}
-                default_source: 'assets/icons/paper-plane-top(1).png'
-                pressed_source: 'assets/icons/paper-plane-top(1).png'
+                default_source: 'send'
+                pressed_source: 'send'
                 on_release: root.send_message()
                 # No background fill: icon-only button
 
 <FinalScreen>:
     name: 'final'
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
     BoxLayout:
         orientation: 'vertical'
-        padding: [dp(16), dp(12), dp(16), dp(16)]
+        padding: [dp(16), dp(16), dp(16), dp(16)]
         spacing: dp(0)
 
         ScrollView:
@@ -1133,9 +1170,10 @@ ScreenManager:
                 cols: 1
                 size_hint_y: None
                 height: self.minimum_height
-                spacing: dp(12)
+                spacing: dp(16)
                 padding: [0, dp(12), 0, dp(120)]
 
+                # Back Button
                 BoxLayout:
                     size_hint_y: None
                     height: dp(50)
@@ -1144,8 +1182,8 @@ ScreenManager:
                         size_hint: None, None
                         size: dp(36), dp(36)
                         pos_hint: {'center_y': 0.5}
-                        default_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
-                        pressed_source: 'assets/icons/free-icon-font-arrow-small-left-3916837(1).png'
+                        default_source: 'arrow-left'
+                        pressed_source: 'arrow-left'
                         on_release: app.exit_to_main()
                         canvas.before:
                             Color:
@@ -1153,54 +1191,145 @@ ScreenManager:
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [dp(22)]
+                                radius: [dp(12)]
                     Widget:
 
-                Widget:
+                # Success Icon
+                AnchorLayout:
+                    anchor_x: 'center'
+                    anchor_y: 'center'
                     size_hint_y: None
-                    height: dp(8)
+                    height: dp(80)
+                    
+                    Widget:
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        canvas:
+                            Color:
+                                rgba: color_success_bg
+                            Ellipse:
+                                pos: self.pos
+                                size: self.size
+                            Color:
+                                rgba: color_success
+                            Line:
+                                width: dp(3)
+                                points: [self.x + dp(18), self.y + dp(32), self.x + dp(28), self.y + dp(22), self.x + dp(46), self.y + dp(42)]
 
-                Label:
-                    text: 'Результат'
-                    color: 0.15, 0.55, 0.9, 1
-                    font_size: '32sp'
-                    bold: True
+                # Header Text
+                BoxLayout:
+                    orientation: 'vertical'
                     size_hint_y: None
-                    height: dp(56)
+                    height: dp(60)
+                    Label:
+                        text: 'Готово!'
+                        color: color_text_dark
+                        font_size: '28sp'
+                        bold: True
+                        halign: 'center'
+                    Label:
+                        text: 'Курс успешно завершен.'
+                        color: color_text_gray
+                        font_size: '16sp'
+                        halign: 'center'
 
-                Label:
-                    id: score_label
-                    text: root.score_text
-                    color: 0.2, 0.2, 0.2, 1
-                    font_size: '24sp'
-                    halign: 'center'
-                    valign: 'top'
+                # Stats Cards
+                BoxLayout:
                     size_hint_y: None
-                    height: self.texture_size[1] + dp(20)
-                    text_size: self.width, None
+                    height: dp(100)
+                    spacing: dp(16)
 
-                Widget:
+                    # Test Score Card
+                    Card:
+                        orientation: 'vertical'
+                        padding: dp(12)
+                        Label:
+                            id: score_percent
+                            text: '0%'
+                            color: color_primary
+                            font_size: '24sp'
+                            bold: True
+                        Label:
+                            text: 'ТЕСТ'
+                            color: color_text_gray
+                            font_size: '12sp'
+                            bold: True
+
+                    # Reasoning Score Card
+                    Card:
+                        orientation: 'vertical'
+                        padding: dp(12)
+                        Label:
+                            id: reasoning_score
+                            text: '0/10'
+                            color: color_orange
+                            font_size: '24sp'
+                            bold: True
+                        Label:
+                            text: 'РАССУЖДЕНИЕ'
+                            color: color_text_gray
+                            font_size: '12sp'
+                            bold: True
+
+                # AI Verdict Card
+                Card:
+                    orientation: 'vertical'
+                    padding: dp(20)
+                    spacing: dp(10)
                     size_hint_y: None
-                    height: dp(8)
+                    height: self.minimum_height
+                    
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(24)
+                        spacing: dp(8)
+                        Label:
+                            text: '💬 Вердикт ИИ'
+                            color: color_text_dark
+                            font_size: '16sp'
+                            bold: True
+                            halign: 'left'
+                            text_size: self.size
 
-                Label:
-                    id: note_label
-                    text: root.note_text
-                    color: 0.35, 0.35, 0.35, 1
-                    font_size: '14sp'
-                    halign: 'left'
-                    valign: 'top'
-                    size_hint_y: None
-                    height: self.texture_size[1] + dp(16)
-                    text_size: self.width, None
+                    Label:
+                        id: ai_verdict
+                        text: '...'
+                        color: color_text_gray
+                        font_size: '14sp'
+                        italic: True
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
 
-                Widget:
-                    size_hint_y: None
-                    height: dp(16)
+                    Widget:
+                        size_hint_y: None
+                        height: dp(10)
 
+                    Label:
+                        text: 'КАК УЛУЧШИТЬ'
+                        color: color_text_gray
+                        font_size: '10sp'
+                        bold: True
+                        size_hint_y: None
+                        height: dp(20)
+                        halign: 'left'
+                        text_size: self.size
+
+                    Label:
+                        id: improvement_text
+                        text: '...'
+                        color: color_primary
+                        font_size: '14sp'
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+
+                # Error Explanations
                 Label:
                     text: 'Работа над ошибками'
-                    color: 0.3, 0.3, 0.3, 1
+                    color: color_text_dark
                     font_size: '18sp'
                     bold: True
                     halign: 'left'
@@ -1216,13 +1345,10 @@ ScreenManager:
                     spacing: dp(10)
                     padding: [0, 0]
 
-                Widget:
-                    size_hint_y: None
-                    height: dp(16)
-
+                # Followup Topics
                 Label:
                     text: 'Темы для углубления'
-                    color: 0.3, 0.3, 0.3, 1
+                    color: color_text_dark
                     font_size: '18sp'
                     bold: True
                     halign: 'left'
@@ -1237,53 +1363,6 @@ ScreenManager:
                     height: self.minimum_height
                     spacing: dp(8)
                     padding: [0, 0]
-
-        BoxLayout:
-            size_hint_y: None
-            height: dp(64)
-            padding: [dp(12), dp(8), dp(12), dp(8)]
-            spacing: dp(32)
-            canvas.before:
-                Color:
-                    rgba: 0, 0, 0, 0
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-                Color:
-                    rgba: 0.92, 0.92, 0.92, 1
-                Line:
-                    points: [self.x, self.y + self.height, self.x + self.width, self.y + self.height]
-                    width: 1
-
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
-                IconToggleButton:
-                    size: dp(34), dp(34)
-                    icon_source: 'assets/icons/free-icon-font-home-3917033.png'
-                    target_screen: 'saved'
-                    group: 'final_nav'
-                    on_release: app.exit_to_main()
-
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
-                IconToggleButton:
-                    size: dp(34), dp(34)
-                    icon_source: 'assets/icons/free-icon-font-search-3917132.png'
-                    target_screen: 'search'
-                    group: 'final_nav'
-                    on_release: app.goto_search_tab()
-
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
-                IconToggleButton:
-                    size: dp(34), dp(34)
-                    icon_source: 'assets/icons/free-icon-font-settings-sliders-3917103.png'
-                    target_screen: 'settings'
-                    group: 'final_nav'
-                    on_release: app.return_to_theory()
 """
 
 
@@ -1337,8 +1416,8 @@ class CourseCard(ButtonBehavior, BoxLayout):
         delete_btn = IconButton(
             size_hint=(None, None),
             size=(dp(26), dp(26)),
-            default_source='assets/icons/free-icon-font-trash-3917242(1).png',
-            pressed_source='assets/icons/free-icon-font-trash-3917242(1).png'
+            default_source='trash-can',
+            pressed_source='trash-can'
         )
         delete_btn.bind(on_release=lambda inst, t=topic, d=difficulty: App.get_running_app().delete_saved_course(t, d))
         top_row.add_widget(delete_btn)
@@ -1454,41 +1533,41 @@ class GradientButton(Button):
             self._grad1_color.rgba = (0.1, 0.4, 0.9, 1)
 
 
-class IconButton(ButtonBehavior, Image):
+class IconButton(MDIconButton):
     """
     Кнопка-иконка с поддержкой смены изображения при нажатии.
     
     Используется для небольших действий типа удаления, закрытия и т.д.
     
     Атрибуты:
-        default_source: Путь к изображению в нормальном состоянии
-        pressed_source: Путь к изображению при нажатии
+        default_source: Имя иконки в нормальном состоянии
+        pressed_source: Имя иконки при нажатии
     """
     default_source = StringProperty('')
     pressed_source = StringProperty('')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.allow_stretch = True
-        self.keep_ratio = True
-        self.size_hint = (None, None)
+        self.theme_text_color = "Custom"
+        self.text_color = (0.2, 0.2, 0.2, 1)
         self.bind(state=self._update_source)
-        self._update_source(self, getattr(self, 'state', 'normal'))
+        if self.default_source:
+            self.icon = self.default_source
 
     def on_default_source(self, instance, value):
-        """Устанавливает изображение по умолчанию"""
+        """Устанавливает иконку по умолчанию"""
         if self.state != 'down' and value:
-            self.source = value
+            self.icon = value
 
     def _update_source(self, instance, state):
-        """Меняет изображение в зависимости от состояния кнопки"""
+        """Меняет иконку в зависимости от состояния кнопки"""
         if state == 'down' and self.pressed_source:
-            self.source = self.pressed_source
+            self.icon = self.pressed_source
         elif self.default_source:
-            self.source = self.default_source
+            self.icon = self.default_source
 
 
-class IconToggleButton(ToggleButtonBehavior, Image):
+class IconToggleButton(ButtonBehavior, MDIcon):
     """
     Кнопка-иконка с поддержкой переключения (toggle).
     
@@ -1496,7 +1575,7 @@ class IconToggleButton(ToggleButtonBehavior, Image):
     Меняет цвет при активации.
     
     Атрибуты:
-        icon_source: Путь к файлу иконки
+        icon_source: Имя иконки
         target_screen: Имя целевого экрана для переключения
         active_color: Цвет иконки в активном состоянии (синий)
         inactive_color: Цвет иконки в неактивном состоянии (серый)
@@ -1505,40 +1584,60 @@ class IconToggleButton(ToggleButtonBehavior, Image):
     target_screen = StringProperty('')
     active_color = ListProperty([0.15, 0.55, 0.9, 1])
     inactive_color = ListProperty([0.5, 0.5, 0.5, 1])
+    active = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.allow_stretch = True
-        self.keep_ratio = True
-        self.size_hint = (None, None)
-        self.bind(state=self._update_style)
-        self._update_style(self, getattr(self, 'state', 'normal'))
+        self.theme_text_color = "Custom"
+        self.text_color = self.inactive_color
+        self.halign = "center"
+        self.valign = "middle"
+        self.font_size = "28sp"
+        self.bind(active=self._update_style)
         if self.icon_source:
-            self.source = self.icon_source
+            self.icon = self.icon_source
 
     def on_icon_source(self, instance, value):
         """Устанавливает иконку"""
         if value:
-            self.source = value
+            self.icon = value
 
-    def _update_style(self, instance, state):
-        """Меняет цвет иконки в зависимости от состояния"""
-        if state == 'down':
-            self.color = self.active_color  # Синий когда активна
+    def _update_style(self, instance, value):
+        """Меняет цвет иконки в зависимости от active"""
+        if value:
+            self.text_color = self.active_color  # Синий когда активна
         else:
-            self.color = self.inactive_color  # Серый когда неактивна
+            self.text_color = self.inactive_color  # Серый когда неактивна
 
     def on_release(self):
-        """Переключает экран при нажатии"""
-        super().on_release()
-        if self.target_screen:
-            app = App.get_running_app()
-            if app and getattr(app.root, 'get_screen', None):
+        """Переключает выделение при нажатии. Повторный клик НЕ снимает выделение."""
+        app = App.get_running_app()
+        try:
+            main_screen = app.root.get_screen('main')
+        except Exception:
+            main_screen = None
+
+        # Если уже активен — ничего не делаем (оставляем выделение)
+        if self.active:
+            return
+
+        # Снимаем выделение с других кнопок
+        if main_screen:
+            for btn_id in ('nav_saved', 'nav_search', 'nav_chat', 'nav_settings'):
                 try:
-                    main_screen = app.root.get_screen('main')
-                    main_screen.ids.tab_manager.current = self.target_screen
+                    btn = main_screen.ids.get(btn_id)
+                    if btn and btn is not self and hasattr(btn, 'active'):
+                        btn.active = False
                 except Exception:
                     pass
+
+        # Активируем себя и переключаем экран
+        self.active = True
+        if self.target_screen and main_screen:
+            try:
+                main_screen.ids.tab_manager.current = self.target_screen
+            except Exception:
+                pass
 
 
 class SectionDivider(Widget):
@@ -1593,14 +1692,16 @@ class DifficultyButton(ToggleButton):
 
 
 class OptionButton(Button):
-    default_color = (0.85, 0.85, 0.85, 1)
-    selected_color = (0.3, 0.8, 0.4, 1)
+    default_color = (0.96, 0.96, 0.96, 1)
+    selected_color = (0.85, 0.92, 1, 1)
+    text_color = (0.2, 0.2, 0.2, 1)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.color = (0, 0, 0, 1)  # default text color black
-        self.halign = 'center'
+        self.color = self.text_color
+        self.halign = 'left'
         self.valign = 'middle'
+        self.padding = [dp(16), dp(12)]
         with self.canvas.before:
             self._bg_color = Color(*self.default_color)
             self._bg_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
@@ -1610,7 +1711,7 @@ class OptionButton(Button):
     def _update_rect(self, *args):
         self._bg_rect.pos = self.pos
         self._bg_rect.size = self.size
-        self.text_size = (self.width - dp(20), None)
+        self.text_size = (self.width - dp(32), None)
 
     def _update_height(self, *args):
         self.height = max(dp(60), self.texture_size[1] + dp(30))
@@ -1618,7 +1719,8 @@ class OptionButton(Button):
     def set_selected(self, selected: bool):
         """Устанавливает выбранное состояние кнопки"""
         self._bg_color.rgba = self.selected_color if selected else self.default_color
-        self.color = (1, 1, 1, 1) if selected else (0, 0, 0, 1)
+        # Text color remains dark for readability on light blue
+        self.color = (0.1, 0.3, 0.6, 1) if selected else self.text_color
 
 
 # ============================================================================
@@ -1671,6 +1773,12 @@ class MainScreen(Screen):
     
     def _update_network_status(self, is_online):
         """Обновляет иконку статуса сети в UI"""
+        # The `network_status` widget may have been removed from the header.
+        # Guard access to avoid AttributeError when self.ids doesn't contain it.
+        if 'network_status' not in self.ids:
+            # Nothing to update in the UI; just return silently.
+            return
+
         if is_online:
             self.ids.network_status.text = '🌐'  # Онлайн
             self.ids.network_status.color = (0.3, 0.7, 0.3, 1)  # Зелёный
@@ -1971,8 +2079,24 @@ class FinalScreen(Screen):
     note_text = StringProperty('')
     nav_visible = BooleanProperty(False)
 
+    def set_test_score(self, percent):
+        if hasattr(self.ids, 'score_percent'):
+            self.ids.score_percent.text = f"{percent}%"
+
+    def set_reasoning_score(self, score, total):
+        if hasattr(self.ids, 'reasoning_score'):
+            self.ids.reasoning_score.text = f"{score}/{total}"
+
+    def set_ai_verdict(self, text):
+        if hasattr(self.ids, 'ai_verdict'):
+            self.ids.ai_verdict.text = f'"{text}"' if text else '"Нет данных"'
+
+    def set_improvement(self, text):
+        if hasattr(self.ids, 'improvement_text'):
+            self.ids.improvement_text.text = text or "Нет рекомендаций"
+
     def set_score(self, score, total, percent):
-        """Устанавливает текст с общим результатом"""
+        """Устанавливает текст с общим результатом (Legacy support)"""
         self.score_text = f'{percent}% ({score}/{total} правильных ответов)'
 
     def set_quick_note(self, text):
@@ -2059,6 +2183,21 @@ class FinalScreen(Screen):
             label.bind(width=lambda inst, w: setattr(inst, 'text_size', (w - dp(24), None)))
             label.bind(texture_size=lambda inst, size: setattr(inst, 'height', max(dp(80), size[1] + dp(24))))
             layout.add_widget(label)
+
+        # Добавляем кнопку возврата в меню в конце списка
+        try:
+            from kivy.uix.boxlayout import BoxLayout
+            btn_box = BoxLayout(size_hint_y=None, height=dp(56), padding=[0, dp(8)])
+            return_btn = RoundedButton(text='ВЕРНУТЬСЯ В МЕНЮ', size_hint=(1, None), height=dp(40), bg_color=(0.15, 0.55, 0.9, 1), color=(1,1,1,1))
+            def _on_return(inst):
+                app = App.get_running_app()
+                if app:
+                    app.exit_to_main()
+            return_btn.bind(on_release=_on_return)
+            btn_box.add_widget(return_btn)
+            layout.add_widget(btn_box)
+        except Exception as e:
+            self.log(f"Failed to add return button: {e}")
 
     def on_scroll_y(self, scroll_y):
         # show navigation when scrolled to bottom (scroll_y near 0)
@@ -2181,37 +2320,44 @@ class ChatScreen(Screen):
     def show_image_chooser(self):
         """Показывает выбор изображения: галерея на Android, диалог на Desktop"""
         if IS_ANDROID:
-            # На Android используем нативный file picker
+            # На Android используем Intent для открытия галереи
             try:
-                from plyer import filechooser
-                
-                def on_file_selected(selection):
-                    """Callback когда пользователь выбрал файл"""
-                    if selection and len(selection) > 0:
-                        path = selection[0]
-                        print(f"[Chat] Selected image: {path}")
-                        self.selected_image = path
-                        # Визуальное подтверждение выбора
-                        print(f"[Chat] Image attached")
-                
                 # Запрашиваем разрешения на чтение файлов (Android 6+)
                 try:
                     from android.permissions import request_permissions, Permission
                     request_permissions([
                         Permission.READ_EXTERNAL_STORAGE,
-                        Permission.WRITE_EXTERNAL_STORAGE
+                        Permission.READ_MEDIA_IMAGES  # Android 13+
                     ])
                 except Exception as e:
                     print(f"[Chat] Permissions error: {e}")
                 
-                # Открываем file picker с фильтром по изображениям
-                filechooser.open_file(
-                    on_selection=on_file_selected,
-                    filters=["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.bmp"],
-                    mime_type="image/*"
-                )
+                # Используем Android Intent для открытия галереи
+                from jnius import autoclass, cast
+                
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                Intent = autoclass('android.content.Intent')
+                Uri = autoclass('android.net.Uri')
+                
+                # Создаём Intent для выбора изображения
+                intent = Intent(Intent.ACTION_PICK)
+                intent.setType("image/*")
+                
+                # Получаем текущую Activity
+                currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+                
+                # Запускаем галерею (результат придёт в onActivityResult)
+                currentActivity.startActivityForResult(intent, 1001)
+                
+                # Регистрируем callback для получения результата
+                PythonActivity.mActivity.bind(on_activity_result=self._on_gallery_result)
+                
+                print("[Chat] Opening Android gallery...")
+                
             except Exception as e:
-                print(f"[Chat] Error opening file chooser: {e}")
+                print(f"[Chat] Error opening gallery: {e}")
+                import traceback
+                traceback.print_exc()
                 # Fallback на текстовый ввод
                 self._show_text_input_chooser()
         else:
@@ -2237,6 +2383,92 @@ class ChatScreen(Screen):
             except Exception as e:
                 print(f"[Chat] Plyer not available, using text input: {e}")
                 self._show_text_input_chooser()
+    
+    def _on_gallery_result(self, request_code, result_code, intent):
+        """Callback для получения результата из Android галереи"""
+        if request_code == 1001:  # Наш код запроса
+            from jnius import autoclass, cast
+            
+            Activity = autoclass('android.app.Activity')
+            
+            if result_code == Activity.RESULT_OK and intent:
+                try:
+                    # Получаем URI выбранного изображения
+                    uri = intent.getData()
+                    
+                    # Конвертируем URI в реальный путь к файлу
+                    path = self._get_real_path_from_uri(uri)
+                    
+                    if path:
+                        print(f"[Chat] Selected image from gallery: {path}")
+                        self.selected_image = path
+                        
+                        # Визуальное подтверждение (меняем иконку кнопки)
+                        attach_btn = self.ids.attach_btn
+                        attach_btn.default_source = 'check-circle'
+                        attach_btn.pressed_source = 'check-circle'
+                        
+                        # Через 2 секунды возвращаем иконку обратно
+                        def reset_icon(dt):
+                            attach_btn.default_source = 'paperclip'
+                            attach_btn.pressed_source = 'paperclip'
+                        Clock.schedule_once(reset_icon, 2)
+                    else:
+                        print("[Chat] Failed to get real path from URI")
+                        
+                except Exception as e:
+                    print(f"[Chat] Error processing gallery result: {e}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                print("[Chat] Gallery selection cancelled or failed")
+    
+    def _get_real_path_from_uri(self, uri):
+        """Конвертирует Android URI в реальный путь к файлу"""
+        try:
+            from jnius import autoclass, cast
+            
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            ContentResolver = autoclass('android.content.ContentResolver')
+            MediaStore = autoclass('android.provider.MediaStore')
+            
+            currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+            contentResolver = currentActivity.getContentResolver()
+            
+            # Пробуем получить путь через ContentResolver
+            cursor = contentResolver.query(uri, None, None, None, None)
+            
+            if cursor:
+                cursor.moveToFirst()
+                idx = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+                if idx >= 0:
+                    path = cursor.getString(idx)
+                    cursor.close()
+                    return path
+                cursor.close()
+            
+            # Альтернативный метод: копируем файл во временную директорию
+            import tempfile
+            import shutil
+            
+            input_stream = contentResolver.openInputStream(uri)
+            if input_stream:
+                # Создаём временный файл
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+                temp_path = temp_file.name
+                temp_file.close()
+                
+                # Читаем из InputStream и записываем в файл
+                # (это требует Java bridge, поэтому используем упрощенный подход)
+                print(f"[Chat] Using URI directly: {uri.toString()}")
+                return uri.toString()
+                
+        except Exception as e:
+            print(f"[Chat] Error converting URI to path: {e}")
+            import traceback
+            traceback.print_exc()
+            
+        return None
     
     def _show_text_input_chooser(self):
         """Fallback метод: текстовый ввод URL или пути"""
@@ -2289,7 +2521,7 @@ class ChatScreen(Screen):
         cancel_btn.bind(on_release=on_cancel)
         popup.open()
 
-class MyApp(App):
+class MyApp(MDApp):
     """
     Главный класс приложения SmartTest.
     
@@ -2508,31 +2740,40 @@ class MyApp(App):
         self.difficulty = level
 
     def start_generation(self):
-        # Check if API key is set
-        api_key = None
-        if self.settings_store.exists('api'):
-            data = self.settings_store.get('api')
-            api_key = data.get('api_key', data.get('key'))
-        self._last_api_key = api_key
-        
-        if not api_key:
-            self.log("WARNING: No API key configured! Using offline mode.")
-        
-        # Quick network check before generation
-        main_screen = self.root.get_screen('main')
-        network_status = main_screen.ids.network_status.text
-        if network_status == '📵':
-            self.log("WARNING: No internet connection detected!")
-        
-        # Access SearchScreen through MainScreen -> ScreenManager
-        search_screen = main_screen.ids.tab_manager.get_screen('search')
-        topic = search_screen.ids.topic_input.text.strip()
-        if not topic:
-            topic = "Общие знания"
-        
-        # Переходим на экран загрузки и запускаем генерацию в отдельном потоке
-        self.root.current = 'loading'
-        threading.Thread(target=self.generate_quiz_thread, args=(topic, self.difficulty)).start()
+        try:
+            # Check if API key is set
+            api_key = None
+            if self.settings_store.exists('api'):
+                data = self.settings_store.get('api')
+                api_key = data.get('api_key', data.get('key'))
+            self._last_api_key = api_key
+            
+            if not api_key:
+                self.log("WARNING: No API key configured! Using offline mode.")
+                # Show error message to user
+                self._show_generation_error("API ключ не настроен. Перейдите в Настройки и сохраните ключ OpenRouter.")
+                return
+            
+            # Get main screen to access search input
+            main_screen = self.root.get_screen('main')
+            
+            # Access SearchScreen through MainScreen -> ScreenManager
+            search_screen = main_screen.ids.tab_manager.get_screen('search')
+            topic = search_screen.ids.topic_input.text.strip()
+            if not topic:
+                self.log("WARNING: No topic entered, using default")
+                topic = "Общие знания"
+            
+            self.log(f"Starting generation for topic: {topic}, difficulty: {self.difficulty}")
+            
+            # Переходим на экран загрузки и запускаем генерацию в отдельном потоке
+            self.root.current = 'loading'
+            threading.Thread(target=self.generate_quiz_thread, args=(topic, self.difficulty), daemon=True).start()
+            
+        except Exception as e:
+            self.log(f"ERROR in start_generation: {e}")
+            self.log(f"Traceback: {tb_module.format_exc()}")
+            self._show_generation_error(f"Ошибка запуска генерации: {str(e)}")
 
     def generate_quiz_thread(self, topic, difficulty):
         """
@@ -2545,22 +2786,49 @@ class MyApp(App):
             topic: Тема для генерации
             difficulty: Уровень сложности
         """
-        # Получаем API ключ из настроек
-        api_key = None
-        if self.settings_store.exists('api'):
-            data = self.settings_store.get('api')
-            api_key = data.get('api_key', data.get('key'))
-        
-        self.log(f"Starting generation for {topic}...")
-        self.log(f"API key available: {'Yes' if api_key else 'No'}")
+        result = None
+        error_message = None
         
         try:
-            # Вызываем LLM для генерации курса
-            result = generate_quiz(topic, difficulty, api_key=api_key)
-            self.log(f"Generation completed. Has error: {'error' in result}")
+            # Получаем API ключ из настроек
+            api_key = None
+            if self.settings_store.exists('api'):
+                data = self.settings_store.get('api')
+                api_key = data.get('api_key', data.get('key'))
+            
+            if not api_key:
+                error_message = "API ключ не найден в настройках"
+                self.log(f"ERROR: {error_message}")
+                result = {'error': error_message}
+            else:
+                self.log(f"Starting generation for {topic}...")
+                self.log(f"Difficulty: {difficulty}")
+                self.log(f"API key available: Yes (length: {len(api_key)})")
+                
+                # Вызываем LLM для генерации курса
+                result = generate_quiz(topic, difficulty, api_key=api_key)
+                
+                if result:
+                    if 'error' in result:
+                        error_message = result.get('error', 'Неизвестная ошибка')
+                        self.log(f"Generation completed with error: {error_message}")
+                    else:
+                        self.log("Generation completed successfully")
+                        # Verify result structure
+                        if 'questions' not in result or not result['questions']:
+                            error_message = "LLM вернул пустой список вопросов"
+                            result = {'error': error_message}
+                            self.log(f"ERROR: {error_message}")
+                else:
+                    error_message = "LLM вернул пустой результат"
+                    result = {'error': error_message}
+                    self.log(f"ERROR: {error_message}")
+                    
         except Exception as e:
-            self.log(f"Exception during generation: {e}")
-            result = None
+            error_message = f"Ошибка при генерации: {str(e)}"
+            self.log(f"EXCEPTION in generate_quiz_thread: {e}")
+            self.log(f"Traceback: {tb_module.format_exc()}")
+            result = {'error': error_message}
         
         # Возвращаемся в главный поток для обновления UI
         Clock.schedule_once(lambda dt: self.on_generation_complete(result))
@@ -2575,14 +2843,36 @@ class MyApp(App):
         Args:
             result: Словарь с сгенерированным курсом {questions, theory, meta}
         """
-        if result and 'questions' in result:
-            if 'error' in result and result['error']:
-                self.log(f"Generation error: {result['error']}")
-            else:
-                self.log("Generation successful")
+        try:
+            # Проверяем наличие результата
+            if not result:
+                self.log("ERROR: No result from generation")
+                self._show_generation_error("Не удалось сгенерировать курс. Проверьте подключение к интернету и API ключ.")
+                return
+            
+            # Проверяем наличие ошибки в результате
+            if 'error' in result:
+                error_msg = result.get('error', 'Неизвестная ошибка')
+                self.log(f"Generation error: {error_msg}")
+                self._show_generation_error(f"Ошибка генерации: {error_msg}")
+                return
+            
+            # Проверяем наличие вопросов
+            if 'questions' not in result or not result['questions']:
+                self.log("ERROR: No questions in result")
+                self._show_generation_error("LLM не вернул вопросы. Попробуйте другую тему или проверьте API ключ.")
+                return
+            
+            self.log("Generation successful")
+            self.log(f"Questions count: {len(result['questions'])}")
 
             # Сохраняем сгенерированный курс в хранилище
-            self.storage.save(result)
+            try:
+                self.storage.save(result)
+                self.log("Course saved to storage")
+            except Exception as e:
+                self.log(f"WARNING: Failed to save course: {e}")
+                # Continue anyway - saving is not critical
             
             # Загружаем вопросы в QuizScreen
             quiz_screen = self.root.get_screen('quiz')
@@ -2590,8 +2880,8 @@ class MyApp(App):
             
             # Сохраняем метаданные курса
             meta = result.get('meta', {})
-            topic = meta.get('topic', '')
-            difficulty = meta.get('difficulty', '')
+            topic = meta.get('topic', 'Без названия')
+            difficulty = meta.get('difficulty', self.difficulty)
             theory_text = result.get('theory', '') or ''
             
             # Создаём краткую заметку из первых 200 символов теории
@@ -2609,13 +2899,16 @@ class MyApp(App):
                 theory_screen.meta_title = f"Тема: {topic}" if topic else ''
                 theory_screen.meta_sub = f"Сложность: {difficulty}" if difficulty else ''
                 self.root.current = 'theory'
+                self.log("Switched to theory screen")
             else:
                 # Если теории нет, сразу запускаем тест
+                self.log("No theory, starting quiz directly")
                 self.start_quiz()
-        else:
-            # Если ошибка, возвращаемся на главную и показываем уведомление (в консоль пока)
-            print("Failed to generate quiz")
-            self.root.current = 'main'
+                
+        except Exception as e:
+            self.log(f"EXCEPTION in on_generation_complete: {e}")
+            self.log(f"Traceback: {tb_module.format_exc()}")
+            self._show_generation_error(f"Внутренняя ошибка: {str(e)}")
 
     def prepare_followup_topics(self):
         if not getattr(self, 'root', None):
@@ -2661,6 +2954,43 @@ class MyApp(App):
         # Устанавливаем общий заголовок с результатами
         final_screen.set_score(mc_score + open_score, mc_total + open_max, total_percent)
         
+        # --- NEW: Set specific stats for the new design ---
+        final_screen.set_test_score(mc_percent)
+        # For reasoning, we show score/10 (average) or total score?
+        # The image shows "0/10". If there are multiple questions, maybe average score?
+        # Or maybe the user wants the total score?
+        # "0/10" looks like a score for a single question or an average.
+        # Let's show the average score out of 10.
+        avg_open_score = 0
+        if len(self.open_answers_history) > 0:
+            total_open_score = sum([item['evaluation'].get('score', 0) for item in self.open_answers_history])
+            avg_open_score = round(total_open_score / len(self.open_answers_history), 1)
+            if avg_open_score.is_integer():
+                avg_open_score = int(avg_open_score)
+        
+        final_screen.set_reasoning_score(avg_open_score, 10)
+
+        # Extract verdict and improvement
+        verdict = "Тест завершен. Проанализируйте свои ошибки ниже."
+        improvement = "Изучите теоретический материал еще раз."
+        
+        # Try to get a summary or use the last answer's feedback
+        # Ideally, we would ask LLM for a summary, but for now let's use the last meaningful feedback
+        if self.open_answers_history:
+            # Find the answer with the lowest score to give improvement advice
+            sorted_answers = sorted(self.open_answers_history, key=lambda x: x['evaluation'].get('score', 0))
+            worst_answer = sorted_answers[0]
+            
+            if worst_answer['evaluation'].get('feedback'):
+                verdict = worst_answer['evaluation'].get('feedback')
+            
+            if worst_answer['evaluation'].get('suggested_improvements'):
+                improvement = worst_answer['evaluation'].get('suggested_improvements')
+
+        final_screen.set_ai_verdict(verdict)
+        final_screen.set_improvement(improvement)
+        # --------------------------------------------------
+        
         # Подготавливаем краткие заметки по теме
         note_text = ''
         topic = ''
@@ -2679,7 +3009,7 @@ class MyApp(App):
         # Добавляем заголовок и ошибки MC части
         if mc_errors:
             combined_errors.append({
-                'question': '═══ РАБОТА НАД ОШИБКАМИ: ТЕСТОВАЯ ЧАСТЬ ═══',
+                'question': 'РАБОТА НАД ОШИБКАМИ: ТЕСТОВАЯ ЧАСТЬ',
                 'selected': f'Результат: {mc_percent}% ({mc_score}/{mc_total})',
                 'correct': ''
             })
@@ -2691,7 +3021,7 @@ class MyApp(App):
                 # Визуальный разделитель между секциями
                 combined_errors.append({'divider': True})
             combined_errors.append({
-                'question': '═══ РАБОТА НАД ОШИБКАМИ: РАЗВЁРНУТЫЕ ОТВЕТЫ ═══',
+                'question': 'РАБОТА НАД ОШИБКАМИ: РАЗВЁРНУТЫЕ ОТВЕТЫ',
                 'selected': f'Результат: {open_percent}% ({open_score}/{open_max})',
                 'correct': ''
             })
@@ -3190,6 +3520,46 @@ class MyApp(App):
             main_screen.ids.tab_manager.current = 'search'
         except Exception:
             pass
+    
+    def _show_generation_error(self, message):
+        """
+        Показывает ошибку генерации пользователю.
+        
+        Обновляет экран загрузки с сообщением об ошибке,
+        затем через 3 секунды возвращает на главный экран.
+        
+        Args:
+            message: Текст сообщения об ошибке
+        """
+        self.log(f"Showing generation error to user: {message}")
+        
+        try:
+            # Если мы на экране загрузки, показываем ошибку там
+            if self.root.current == 'loading':
+                loading_screen = self.root.get_screen('loading')
+                if hasattr(loading_screen.ids, 'fact_label'):
+                    loading_screen.ids.fact_label.text = f"❌ Ошибка:\n\n{message}"
+                    loading_screen.ids.fact_label.color = (0.9, 0.3, 0.3, 1)  # Красный цвет
+                
+                # Через 4 секунды возвращаемся на главный экран
+                Clock.schedule_once(lambda dt: setattr(self.root, 'current', 'main'), 4)
+            else:
+                # Если не на экране загрузки, сразу переходим на главный
+                self.root.current = 'main'
+                
+            # Также логируем в настройках (если есть debug_log)
+            try:
+                settings_screen = self.root.get_screen('settings')
+                if hasattr(settings_screen.ids, 'debug_log'):
+                    current_log = settings_screen.ids.debug_log.text
+                    settings_screen.ids.debug_log.text = f"{message}\n{current_log}"
+            except:
+                pass  # Не критично, если не удалось обновить лог
+                
+        except Exception as e:
+            self.log(f"ERROR in _show_generation_error: {e}")
+            # В крайнем случае просто возвращаемся на главный экран
+            self.root.current = 'main'
 
 
 # ============================================================================
