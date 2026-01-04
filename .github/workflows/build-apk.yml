@@ -3,34 +3,47 @@ name: Build APK
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
-    name: Build APK (debug)
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Cache Buildozer global directory
+      uses: actions/cache@v3
+      with:
+        path: .buildozer_global
+        key: buildozer-global-${{ hashFiles('buildozer.spec') }}
 
-      - name: Install Buildozer and dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade buildozer
+    - name: Cache Buildozer directory
+      uses: actions/cache@v3
+      with:
+        path: .buildozer
+        key: ${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-      - name: Run Buildozer (android debug)
-        uses: craigmorten/buildozer-action@v2
-        with:
-          buildozer_spec: 'buildozer.spec'
-          target: 'android debug'
+    - name: Create .env file
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      run: |
+        touch .env
+        if [ ! -z "$OPENROUTER_API_KEY" ]; then echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> .env; fi
 
-      - name: Upload APK artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smarttest-apk
-          path: bin/*.apk
+    - name: Build with Buildozer
+      uses: ArtemSBulgakov/buildozer-action@v1
+      env:
+        USER: root
+        PIP_BREAK_SYSTEM_PACKAGES: 1
+        LDFLAGS: "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
+      with:
+        command: buildozer android debug
+        buildozer_version: stable
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: package
+        path: bin/*.apk
