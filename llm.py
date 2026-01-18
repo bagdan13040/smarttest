@@ -3,6 +3,8 @@ Uses kivy.network.urlrequest for Android compatibility.
 Falls back to urllib for desktop.
 """
 import json
+import re
+import ast
 import os
 import sys
 import traceback
@@ -59,6 +61,168 @@ FALLBACK_OPENROUTER_IPS = [
 ]
 
 
+def sanitize_unicode(text):
+    """Заменить Unicode спецсимволы на обычный текст для Kivy.
+    
+    Заменяет все математические, греческие и специальные символы на ASCII эквиваленты.
+    """
+    if not isinstance(text, str):
+        return text
+    
+    # Полная таблица замен Unicode -> ASCII
+    replacements = {
+        # Подстрочные индексы
+        '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4',
+        '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9',
+        
+        # Надстрочные индексы
+        '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4',
+        '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
+        '⁺': '+', '⁻': '-', '⁼': '=', '⁽': '(', '⁾': ')',
+        
+        # Греческие буквы
+        'α': 'a', 'β': 'b', 'γ': 'g', 'δ': 'd', 'ε': 'e', 'ζ': 'z',
+        'η': 'h', 'θ': 'th', 'ι': 'i', 'κ': 'k', 'λ': 'l', 'μ': 'm',
+        'ν': 'n', 'ξ': 'x', 'ο': 'o', 'π': 'pi', 'ρ': 'r', 'σ': 's',
+        'τ': 't', 'υ': 'u', 'φ': 'phi', 'χ': 'ch', 'ψ': 'psi', 'ω': 'w',
+        'Α': 'A', 'Β': 'B', 'Γ': 'G', 'Δ': 'D', 'Ε': 'E', 'Ζ': 'Z',
+        'Η': 'H', 'Θ': 'TH', 'Ι': 'I', 'Κ': 'K', 'Λ': 'L', 'Μ': 'M',
+        'Ν': 'N', 'Ξ': 'X', 'Ο': 'O', 'Π': 'PI', 'Ρ': 'R', 'Σ': 'S',
+        'Τ': 'T', 'Υ': 'U', 'Φ': 'PHI', 'Χ': 'CH', 'Ψ': 'PSI', 'Ω': 'W',
+        
+        # Математические операторы
+        '±': '+/-', '∓': '-/+', '×': '*', '÷': '/', '∗': '*',
+        '√': 'sqrt(', '∛': 'cbrt(', '∜': '4root(',
+        '∫': 'integral', '∑': 'sum', '∏': 'product',
+        '∞': 'infinity', '≠': '!=', '≤': '<=', '≥': '>=',
+        '≈': '≈', '≡': '===', '∝': 'proportional_to',
+        '°': 'deg', '′': "'", '″': '"',
+        
+        # Логические и множественные символы
+        '∧': 'AND', '∨': 'OR', '¬': 'NOT', '⊕': 'XOR',
+        '∀': 'for_all', '∃': 'exists', '∈': 'in', '∉': 'not_in',
+        '⊂': 'subset', '⊃': 'superset', '⊆': 'subseteq', '⊇': 'supseteq',
+        '∩': 'intersect', '∪': 'union', '∅': 'empty_set',
+        
+        # Стрелки
+        '→': '->', '←': '<-', '↑': 'up', '↓': 'down',
+        '↔': '<->', '↕': 'up-down', '⇒': '=>', '⇐': '<=',
+        '⇔': '<=>', '⇑': 'UP', '⇓': 'DOWN',
+        '↗': 'up-right', '↘': 'down-right', '↙': 'down-left', '↖': 'up-left',
+        
+        # Геометрические символы
+        '∠': 'angle', '⊥': 'perp', '∥': 'parallel', '⌀': 'diameter',
+        '◇': 'diamond', '□': 'square', '△': 'triangle', '◯': 'circle',
+        
+        # Другие спецсимволы
+        '†': '+', '‡': '++', '•': '*', '‰': 'per_mille',
+        '‱': 'per_ten_thousand', '§': 'section', '¶': 'paragraph',
+        '™': 'TM', '©': '(c)', '®': '(R)', '℠': 'SM',
+        '€': 'EUR', '£': 'GBP', '¥': 'JPY', '₹': 'INR',
+        '₽': 'RUB', '₩': 'KRW', '₪': 'ILS', '฿': 'THB',
+        '‼': '!!', '⁉': '!?', '⁎': '*',
+        
+        # Скобки и кавычки
+        '「': '[', '」': ']', '『': '[[', '』': ']]',
+        '‹': '<', '›': '>', '«': '<<', '»': '>>',
+        '‚': ',', '„': ',,', '‟': '"', '‛': "'",
+        '❛': "'", '❜': "'", '❝': '"', '❞': '"',
+        
+        # Дефисы и тире
+        '‐': '-', '‑': '-', '‒': '-', '–': '-', '—': '--',
+        '―': '-', '⁓': '~', '⁔': '^',
+        
+        # Пунктуация
+        '…': '...', '‥': '..', '⁀': '_', '⁁': '_', '⁂': '***',
+        '❗': '!', '❓': '?', '❔': '?', '❕': '!', '❖': '*',
+    }
+    
+    # Применяем все замены
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    # Убираем остальные problematic символы, но сохраняем emoji
+    def is_emoji(cp):
+        # Проверяем диапазоны популярных emoji и символов
+        return (
+            0x1F600 <= cp <= 0x1F64F or  # Emoticons
+            0x1F300 <= cp <= 0x1F5FF or  # Misc Symbols and Pictographs
+            0x1F680 <= cp <= 0x1F6FF or  # Transport and Map
+            0x1F1E6 <= cp <= 0x1F1FF or  # Regional Indicator Symbols (flags)
+            0x2600 <= cp <= 0x26FF or    # Misc symbols
+            0x2700 <= cp <= 0x27BF or    # Dingbats
+            0x1F900 <= cp <= 0x1F9FF or  # Supplemental Symbols and Pictographs
+            0xFE00 <= cp <= 0xFE0F        # Variation Selectors
+        )
+
+    result = []
+    for char in text:
+        code = ord(char)
+        # Allow ASCII, Cyrillic, basic punctuation, and emojis
+        if code < 128 or (0x0400 <= code <= 0x04FF) or is_emoji(code):
+            result.append(char)
+        elif char in ' \t\n\r-.,;:!?()[]{}«»‹›:\/"\'':
+            result.append(char)
+        else:
+            # Replace other unsupported chars with a space
+            result.append(' ')
+
+    return ''.join(result).strip()
+
+
+def extract_json_block(text):
+    """Попытаться вытащить JSON-блок, ограниченный первыми/последними фигурными скобками."""
+    if not text:
+        return text
+    start = text.find('{')
+    if start == -1:
+        return text.strip()
+    depth = 0
+    end = None
+    for idx in range(start, len(text)):
+        ch = text[idx]
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                end = idx
+                break
+    if end is None:
+        return text[start:].strip()
+    return text[start:end + 1].strip()
+
+
+def clean_json_text(text):
+    """Удалить маркдауны и типичные артефакты ответа модели."""
+    if not isinstance(text, str):
+        return text
+    cleaned = text.replace('```json', '').replace('```', '')
+    cleaned = cleaned.replace('\u201c', '"').replace('\u201d', '"')
+    cleaned = cleaned.replace('“', '"').replace('”', '"')
+    cleaned = cleaned.replace('’', "'").replace('‘', "'")
+    # Вырезаем только JSON-блок
+    cleaned = extract_json_block(cleaned)
+    # Удаляем висячие запятые
+    cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+    return cleaned.strip()
+
+
+def parse_json_safe(text):
+    """Попробовать спарсить JSON с несколькими ступенями очистки."""
+    cleaned = clean_json_text(text)
+    try:
+        return json.loads(cleaned), None
+    except json.JSONDecodeError as e1:
+        log(f"Primary JSON parse failed: {e1}")
+        # Fallback: попытка через literal_eval после замены null/true/false
+        py_like = cleaned.replace('null', 'None').replace('true', 'True').replace('false', 'False')
+        try:
+            return ast.literal_eval(py_like), None
+        except Exception as e2:
+            return None, f"JSON parse failed: {e1}; literal_eval failed: {e2}"
+
+
 def get_course_topics(memory_file='course_topics.json'):
     """Загрузить список тем курса из памяти (файла)."""
     path = Path(memory_file)
@@ -97,6 +261,158 @@ def save_course_topic(topic, memory_file='course_topics.json'):
             log(f"Не удалось сохранить память тем: {e}")
 
 
+def generate_learning_roadmap(topic, goal=None, level="начинающий", api_key=None):
+    """
+    Генерирует дорожную карту обучения для указанной темы.
+    
+    Args:
+        topic: Основная тема для изучения (например, "Python программирование")
+        goal: Цель обучения (например, "стать веб-разработчиком")
+        level: Уровень обучающегося ("начинающий", "средний", "продвинутый")
+        api_key: API ключ для OpenRouter
+        
+    Returns:
+        dict с структурой:
+        {
+            "title": "название программы",
+            "description": "описание",
+            "estimated_time": "примерное время прохождения",
+            "modules": [
+                {
+                    "id": "module_1",
+                    "title": "Название модуля",
+                    "description": "Описание модуля",
+                    "order": 1,
+                    "topics": ["тема1", "тема2", ...],
+                    "difficulty": "легкий|средний|эксперт",
+                    "prerequisites": ["module_id1", "module_id2"],
+                    "estimated_hours": 10
+                },
+                ...
+            ],
+            "error": "текст ошибки" (если произошла ошибка)
+        }
+    """
+    log(f"=== generate_learning_roadmap() starting ===")
+    log(f"  Topic: {topic}")
+    log(f"  Goal: {goal}")
+    log(f"  Level: {level}")
+    
+    if not api_key:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+    
+    if not api_key:
+        return {"error": "API ключ не найден"}
+    
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json; charset=utf-8",
+        "User-Agent": "SmartTest/1.0",
+        "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
+        "X-Title": "SmartTest"
+    }
+    
+    goal_text = f" с целью: {goal}" if goal else ""
+    
+    prompt = f"""Тема: "{topic}"{goal_text}. Уровень: {level}.
+
+Составь план обучения из 5-7 модулей. Для каждого модуля укажи 3-5 ключевых понятий (topics).
+Верни JSON:
+{{
+    "title": "Программа: {topic}",
+    "modules": [
+        {{
+            "id": "1", 
+            "title": "Название модуля", 
+            "topics": ["понятие 1", "понятие 2", "понятие 3"]
+        }}
+    ]
+}}
+
+Никаких описаний, только списки."""
+
+    data = {
+        "model": "xiaomi/mimo-v2-flash:free",
+        "messages": [
+            {"role": "system", "content": "Возвращай только JSON со списком тем."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3
+    }
+    
+    try:
+        log("Sending roadmap generation request...")
+        result = make_request(url, headers, data, timeout=120)
+        log("Roadmap request completed")
+        
+        if 'choices' in result and len(result['choices']) > 0:
+            content = result['choices'][0]['message']['content']
+            log(f"Content preview: {content[:300]}...")
+            
+            # Очистка от markdown
+            content = content.replace('```json', '').replace('```', '').strip()
+            
+            try:
+                roadmap = json.loads(content)
+                
+                # Валидация структуры
+                if not isinstance(roadmap, dict):
+                    return {"error": "Некорректная структура ответа"}
+                
+                if 'modules' not in roadmap or not isinstance(roadmap['modules'], list):
+                    return {"error": "Модули не найдены в ответе"}
+                
+                # Добавляем минимальные поля если их нет
+                for module in roadmap['modules']:
+                    if 'difficulty' not in module:
+                        module['difficulty'] = 'средний'
+                    if 'topics' not in module:
+                        module['topics'] = []
+                    if 'prerequisites' not in module:
+                        module['prerequisites'] = []
+                    if 'estimated_hours' not in module:
+                        module['estimated_hours'] = 0
+                    if 'description' not in module:
+                        module['description'] = ''
+                
+                # Применяем санитайзер к текстовым полям
+                if 'title' in roadmap:
+                    roadmap['title'] = sanitize_unicode(roadmap['title'])
+                if 'description' not in roadmap:
+                    roadmap['description'] = ''
+                else:
+                    roadmap['description'] = sanitize_unicode(roadmap['description'])
+                
+                if 'estimated_time' not in roadmap:
+                    roadmap['estimated_time'] = ''
+                
+                for module in roadmap['modules']:
+                    if 'title' in module:
+                        module['title'] = sanitize_unicode(module['title'])
+                
+                log(f"Successfully generated roadmap with {len(roadmap['modules'])} modules")
+                return roadmap
+                
+            except json.JSONDecodeError as e:
+                log(f"JSON decode error: {e}")
+                log(f"Content: {content[:500]}")
+                return {"error": f"Ошибка парсинга JSON: {str(e)}"}
+        
+        elif 'error' in result:
+            error_msg = result['error'].get('message', 'Unknown error')
+            log(f"API error: {error_msg}")
+            return {"error": error_msg}
+        else:
+            log(f"Unexpected response: {result}")
+            return {"error": "Некорректный ответ от API"}
+            
+    except Exception as e:
+        log(f"Exception in generate_learning_roadmap: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
+        return {"error": str(e)}
+
+
 def generate_next_topics(prev_material, n=5, api_key=None, memory_file='course_topics.json'):
     """Генерировать новые темы для изучения на основе предыдущего материала и сохранить их в память."""
     if not prev_material:
@@ -133,12 +449,14 @@ def generate_next_topics(prev_material, n=5, api_key=None, memory_file='course_t
     }
     try:
         log(f"Sending request to OpenRouter for next topics...")
-        result = make_request(url, headers, data, timeout=60)
+        result = make_request(url, headers, data, timeout=120)
         log(f"Got response from OpenRouter (next topics)")
+
         if 'choices' in result and len(result['choices']) > 0:
             content = result['choices'][0]['message']['content']
             log(f"Content preview: {content[:200]}...")
             content = content.replace('```json', '').replace('```', '').strip()
+            
             try:
                 topics_raw = json.loads(content)
                 if isinstance(topics_raw, list):
@@ -160,12 +478,16 @@ def generate_next_topics(prev_material, n=5, api_key=None, memory_file='course_t
             log(f"Некорректный ответ API (next topics): {result}")
             return []
     except Exception as e:
+        log(f"Error in generate_next_topics: {e}")
+        return []
+
+
         log(f"Exception in generate_next_topics: {e}")
         log(f"Traceback: {traceback.format_exc()}")
         return []
 
 
-def make_request_java(url, headers, data, timeout=60):
+def make_request_java(url, headers, data, timeout=120):
     """Make HTTP request using Java HttpURLConnection (Android native, best compatibility)."""
     if not IS_ANDROID:
         raise ImportError("Java HTTP client only available on Android")
@@ -288,7 +610,7 @@ def _on_progress(req, current, total):
     else:
         log(f"Progress: {current} bytes (total unknown)")
 
-def make_request_kivy(url, headers, data, timeout=60):
+def make_request_kivy(url, headers, data, timeout=120):
     """Make HTTP request using Kivy's UrlRequest (Android compatible)"""
     global _async_result, _async_error, _async_done
     _async_result = None
@@ -365,7 +687,7 @@ def make_request_kivy(url, headers, data, timeout=60):
     log(f"Returning result: {type(_async_result)}")
     return _async_result
 
-def make_request_urllib(url, headers, data, timeout=60):
+def make_request_urllib(url, headers, data, timeout=120):
     """Make HTTP request using urllib (standard library fallback)"""
     log(f"make_request_urllib() starting...")
     log(f"  URL: {url}")
@@ -505,12 +827,14 @@ def make_request_socket_ip(url, headers, data, timeout, ip_override):
 
     return json.loads(raw.decode("utf-8"))
 
-def make_request(url, headers, data, timeout=60):
+def make_request(url, headers, data, timeout=120):
     """
     Make HTTP request using the best available method.
-    Priority on Android: Java HttpURLConnection -> Kivy UrlRequest -> urllib -> IP fallbacks
+    Priority:
+    - Android: Java HttpURLConnection -> urllib -> Kivy UrlRequest -> IP fallbacks
+    - Desktop: urllib -> Kivy UrlRequest -> IP fallbacks
     """
-    log(f"make_request() starting...")
+    log(f"make_request() starting with timeout={timeout}s...")
     errors = []
     
     # On Android, try Java HttpURLConnection FIRST (uses native Android network stack)
@@ -525,8 +849,17 @@ def make_request(url, headers, data, timeout=60):
             log(f"Java HTTP failed: {e}")
             log(f"Traceback: {traceback.format_exc()}")
     
-    # Try Kivy UrlRequest
-    log("Attempting Kivy UrlRequest...")
+    # Try urllib FIRST (stable standard library, works on all platforms)
+    log("Attempting urllib (standard library)...")
+    try:
+        return make_request_urllib(url, headers, data, timeout)
+    except Exception as e:
+        errors.append(f"urllib: {e}")
+        log(f"urllib failed: {e}")
+        log(f"Traceback: {traceback.format_exc()}")
+    
+    # Try Kivy UrlRequest (fallback)
+    log("Attempting Kivy UrlRequest (fallback)...")
     try:
         return make_request_kivy(url, headers, data, timeout)
     except ImportError as e:
@@ -536,43 +869,34 @@ def make_request(url, headers, data, timeout=60):
         log(f"Kivy UrlRequest failed: {e}")
         log(f"Traceback: {traceback.format_exc()}")
     
-    # Try urllib (standard library, should always work)
-    log("Attempting urllib...")
-    try:
-        return make_request_urllib(url, headers, data, timeout)
-    except Exception as e:
-        errors.append(f"urllib: {e}")
-        log(f"urllib failed: {e}")
-        log(f"Traceback: {traceback.format_exc()}")
-        # If DNS resolution failed, try direct IP fallbacks
-        reason = getattr(e, "reason", None)
-        reason_msg = str(reason) if reason else ""
-        is_dns_error = (
-            isinstance(e, socket.gaierror)
-            or isinstance(reason, socket.gaierror)
-            or "No address associated with hostname" in str(e)
-            or "No address associated with hostname" in reason_msg
-        )
-        if reason:
-            log(f"urllib error reason: {reason} ({type(reason)})")
-        if is_dns_error:
-            log("Detected DNS error, trying direct IP fallbacks for openrouter.ai ...")
-            for ip in FALLBACK_OPENROUTER_IPS:
-                try:
-                    return make_request_urllib_ip(url, headers, data, timeout, ip_override=ip)
-                except Exception as ip_err:
-                    errors.append(f"ip {ip}: {ip_err}")
-                    log(f"Fallback via {ip} failed: {ip_err}")
-                    log(f"Traceback: {traceback.format_exc()}")
-                try:
-                    return make_request_socket_ip(url, headers, data, timeout, ip_override=ip)
-                except Exception as ip_err:
-                    errors.append(f"socket {ip}: {ip_err}")
-                    log(f"Socket fallback via {ip} failed: {ip_err}")
-                    log(f"Traceback: {traceback.format_exc()}")
+    # If DNS resolution failed, try direct IP fallbacks
+    reason = getattr(e, "reason", None) if 'e' in locals() else None
+    reason_msg = str(reason) if reason else ""
+    is_dns_error = (
+        any("gaierror" in str(err) or "Name or service not known" in str(err) for err in errors)
+        or isinstance(reason, socket.gaierror)
+        or "No address associated with hostname" in reason_msg
+    )
+    if reason:
+        log(f"Error reason: {reason} ({type(reason)})")
+    if is_dns_error:
+        log("Detected DNS error, trying direct IP fallbacks for openrouter.ai ...")
+        for ip in FALLBACK_OPENROUTER_IPS:
+            try:
+                return make_request_urllib_ip(url, headers, data, timeout, ip_override=ip)
+            except Exception as ip_err:
+                errors.append(f"ip {ip}: {ip_err}")
+                log(f"Fallback via {ip} failed: {ip_err}")
+                log(f"Traceback: {traceback.format_exc()}")
+            try:
+                return make_request_socket_ip(url, headers, data, timeout, ip_override=ip)
+            except Exception as ip_err:
+                errors.append(f"socket {ip}: {ip_err}")
+                log(f"Socket fallback via {ip} failed: {ip_err}")
+                log(f"Traceback: {traceback.format_exc()}")
     
     # All methods failed
-    error_msg = f"Все методы HTTP не сработали: {'; '.join(errors)}"
+    error_msg = f"Все методы HTTP не сработали. Последний: {errors[-1] if errors else 'unknown'}"
     log(error_msg)
     raise Exception(error_msg)
 
@@ -659,10 +983,6 @@ def chat_with_image(message, image_path=None, history=None, api_key=None, model=
     # Формируем историю сообщений
     messages = []
     if history:
-        # Очищаем историю от картинок, чтобы не перегружать контекст (или оставляем, если модель поддерживает)
-        # Для экономии токенов лучше отправлять картинку только в последнем сообщении
-        # Но если нужно контекстное общение по картинке, то нужно думать.
-        # Пока просто добавляем историю как есть, но без картинок в старых сообщениях (упрощение)
         for msg in history:
             role = msg.get('role')
             text = msg.get('content')
@@ -675,6 +995,7 @@ def chat_with_image(message, image_path=None, history=None, api_key=None, model=
     # Список запасных моделей с поддержкой изображений
     fallback_models = [
         "google/gemini-2.0-flash-exp:free",
+        "arcee-ai/trinity-mini:free",
         "qwen/qwen-2-vl-7b-instruct:free",
         "meta-llama/llama-3.2-11b-vision-instruct:free"
     ]
@@ -698,7 +1019,7 @@ def chat_with_image(message, image_path=None, history=None, api_key=None, model=
         
         try:
             log(f"Trying model: {try_model}...")
-            result = make_request(url, headers, data, timeout=60)
+            result = make_request(url, headers, data, timeout=120)
             
             if 'choices' in result and len(result['choices']) > 0:
                 content = result['choices'][0]['message']['content']
@@ -710,26 +1031,82 @@ def chat_with_image(message, image_path=None, history=None, api_key=None, model=
                 log(f"Model {try_model} returned error {error_code}: {error_msg}")
                 
                 # Если 429 (rate limit), пробуем следующую модель
-                if error_code == 429:
-                    last_error = f"Модель {try_model} временно недоступна (превышен лимит)"
+                # Treat 429 (rate limit) and 404 'No endpoints' as temporary/unavailable -> try next model
+                if error_code in (429, 404) or 'No endpoints' in error_msg:
+                    last_error = f"Модель {try_model} недоступна (код {error_code}): {error_msg}"
                     continue
-                else:
+                # For auth errors (401) or other fatal errors, return immediately
+                if error_code == 401:
                     return {"error": error_msg}
-            else:
-                last_error = "Empty response from API"
-                continue
-                
+                # Otherwise, log and continue trying next model
+                last_error = f"Model {try_model} returned error {error_code}: {error_msg}"
         except Exception as e:
             log(f"Exception with model {try_model}: {e}")
             last_error = str(e)
-            # Если ошибка 429 в исключении, пробуем следующую модель
-            if "429" in str(e):
-                continue
-            else:
-                return {"error": str(e)}
+            continue
     
-    # Все модели не сработали
-    return {"error": f"Все модели недоступны. Последняя ошибка: {last_error}"}
+    # Если все модели не сработали
+    log(f"All models failed. Last error: {last_error}")
+    return {"error": last_error or "Все модели недоступны"}
+
+
+def generate_mock_roadmap(topic, goal=None, level="начинающий"):
+    """
+    Генерирует mock дорожную карту для тестирования без API.
+    
+    Args:
+        topic: Тема обучения
+        goal: Цель (опционально)
+        level: Уровень обучающегося
+        
+    Returns:
+        dict: Структурированная дорожная карта
+    """
+    log(f"Generating mock roadmap for: {topic}")
+    
+    # Базовая структура с примером модулей
+    roadmap = {
+        "title": f"Программа обучения: {topic}",
+        "description": f"Структурированная программа изучения темы '{topic}' " + 
+                      f"для уровня '{level}'." + 
+                      (f" Цель: {goal}." if goal else ""),
+        "estimated_time": "2-3 месяца",
+        "modules": [
+            {
+                "id": "1",
+                "title": f"Введение в {topic}",
+                "order": 1,
+            },
+            {
+                "id": "2",
+                "title": "Основные конструкции",
+                "order": 2,
+            },
+            {
+                "id": "3",
+                "title": "Структуры данных",
+                "order": 3,
+            },
+            {
+                "id": "4",
+                "title": "ООП",
+                "order": 4,
+            },
+            {
+                "id": "5",
+                "title": "Работа с файлами",
+                "order": 5,
+            },
+            {
+                "id": "6",
+                "title": "Практический проект",
+                "order": 6,
+            }
+        ]
+    }
+    
+    return roadmap
+
 
 def generate_quiz(topic, difficulty="средний", api_key=None):
     """Generate a quiz using OpenRouter API"""
@@ -741,6 +1118,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     log(f"  IS_ANDROID: {IS_ANDROID}")
     
     url = "https://openrouter.ai/api/v1/chat/completions"
+    timeout = 120  # Увеличен с 60 для медленного интернета
     
     # Get API key
     if not api_key:
@@ -791,7 +1169,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
     
     try:
         log(f"Sending request to OpenRouter...")
-        result = make_request(url, headers, data, timeout=60)
+        result = make_request(url, headers, data, timeout=120)
         log(f"Got response from OpenRouter")
         log(f"Response keys: {list(result.keys()) if isinstance(result, dict) else 'not a dict'}")
         
@@ -799,46 +1177,48 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
             content = result['choices'][0]['message']['content']
             log(f"Content length: {len(content)}")
             log(f"Content preview: {content[:200]}...")
-            content = content.replace('```json', '').replace('```', '').strip()
-            
-            try:
-                log("Parsing JSON response...")
-                response_data = json.loads(content)
-                
-                if not isinstance(response_data, dict) or 'theory' not in response_data or 'questions' not in response_data:
-                    log(f"Invalid response structure: {list(response_data.keys()) if isinstance(response_data, dict) else 'not a dict'}")
-                    return generate_mock_quiz(topic, difficulty, error="Неверная структура ответа API")
-                
-                quiz_data = response_data['questions']
-                log(f"Quiz has {len(quiz_data) if isinstance(quiz_data, list) else 0} questions")
-                if not isinstance(quiz_data, list):
-                    log(f"questions is not a list: {type(quiz_data)}")
-                    return generate_mock_quiz(topic, difficulty, error="questions не список")
-                
-                valid_quiz = []
-                for item in quiz_data:
-                    if (isinstance(item, dict) and 
-                        'question' in item and isinstance(item['question'], str) and
-                        'options' in item and isinstance(item['options'], list) and len(item['options']) == 4 and
-                        'answer' in item and isinstance(item['answer'], int) and 0 <= item['answer'] <= 3):
-                        valid_quiz.append(item)
-                
-                if not valid_quiz:
-                    log("No valid questions found after validation")
-                    return generate_mock_quiz(topic, difficulty, error="Нет валидных вопросов")
-                
-                log(f"Validated {len(valid_quiz)} questions")
-                meta = response_data.get('meta', {})
-                meta['topic'] = topic
-                meta['difficulty'] = difficulty
-                
-                log("Quiz generated successfully!")
-                return {'theory': response_data['theory'], 'questions': valid_quiz, 'meta': meta}
-                
-            except json.JSONDecodeError as e:
-                log(f"JSON parse error: {e}")
-                log(f"Content was: {content[:500]}...")
-                return generate_mock_quiz(topic, difficulty, error=f"Ошибка парсинга JSON: {e}")
+            response_data, parse_error = parse_json_safe(content)
+            if response_data is None:
+                log(f"JSON parse error: {parse_error}")
+                log(f"Raw content was: {content[:500]}...")
+                return generate_mock_quiz(topic, difficulty, error=f"Ошибка парсинга JSON: {parse_error}")
+
+            if not isinstance(response_data, dict) or 'theory' not in response_data or 'questions' not in response_data:
+                log(f"Invalid response structure: {list(response_data.keys()) if isinstance(response_data, dict) else 'not a dict'}")
+                return generate_mock_quiz(topic, difficulty, error="Неверная структура ответа API")
+
+            quiz_data = response_data['questions']
+            log(f"Quiz has {len(quiz_data) if isinstance(quiz_data, list) else 0} questions")
+            if not isinstance(quiz_data, list):
+                log(f"questions is not a list: {type(quiz_data)}")
+                return generate_mock_quiz(topic, difficulty, error="questions не список")
+
+            valid_quiz = []
+            for item in quiz_data:
+                if (isinstance(item, dict) and 
+                    'question' in item and isinstance(item['question'], str) and
+                    'options' in item and isinstance(item['options'], list) and len(item['options']) == 4 and
+                    'answer' in item and isinstance(item['answer'], int) and 0 <= item['answer'] <= 3):
+                    valid_quiz.append(item)
+
+            if not valid_quiz:
+                log("No valid questions found after validation")
+                return generate_mock_quiz(topic, difficulty, error="Нет валидных вопросов")
+
+            log(f"Validated {len(valid_quiz)} questions")
+            meta = response_data.get('meta', {})
+            meta['topic'] = topic
+            meta['difficulty'] = difficulty
+
+            log("Quiz generated successfully!")
+
+            # Применяем санитайзер к теории и вопросам
+            theory_clean = sanitize_unicode(response_data['theory'])
+            for q in valid_quiz:
+                q['question'] = sanitize_unicode(q['question'])
+                q['options'] = [sanitize_unicode(opt) for opt in q['options']]
+
+            return {'theory': theory_clean, 'questions': valid_quiz, 'meta': meta}
         else:
             log(f"No choices in response: {result}")
             return generate_mock_quiz(topic, difficulty, error=f"Некорректный ответ API")
@@ -910,13 +1290,19 @@ def generate_open_questions(topic, n=5, difficulty='средний', api_key=Non
     }
 
     try:
-        result = make_request(url, headers, data, timeout=60)
+        result = make_request(url, headers, data, timeout=120)
         if 'choices' in result and len(result['choices']) > 0:
             content = result['choices'][0]['message']['content']
             content = content.replace('```json', '').replace('```', '').strip()
             try:
                 questions = json.loads(content)
                 if isinstance(questions, list):
+                    # Применяем санитайзер к вопросам и заметкам
+                    for q in questions:
+                        if 'question' in q:
+                            q['question'] = sanitize_unicode(q['question'])
+                        if 'notes' in q:
+                            q['notes'] = sanitize_unicode(q['notes'])
                     return questions
             except json.JSONDecodeError:
                 log(f"JSON parse error in open questions: {content[:200]}")
@@ -969,13 +1355,20 @@ def evaluate_answer(question_text, user_answer, notes="", api_key=None):
     }
 
     try:
-        result = make_request(url, headers, data, timeout=60)
+        result = make_request(url, headers, data, timeout=120)
         if 'choices' in result and len(result['choices']) > 0:
             content = result['choices'][0]['message']['content']
             content = content.replace('```json', '').replace('```', '').strip()
             try:
                 evaluation = json.loads(content)
                 if isinstance(evaluation, dict):
+                    # Применяем санитайзер к комментариям и предложениям
+                    if 'commentary' in evaluation:
+                        evaluation['commentary'] = sanitize_unicode(evaluation['commentary'])
+                    if 'errors' in evaluation and isinstance(evaluation['errors'], list):
+                        evaluation['errors'] = [sanitize_unicode(e) for e in evaluation['errors']]
+                    if 'suggested_improvements' in evaluation:
+                        evaluation['suggested_improvements'] = sanitize_unicode(evaluation['suggested_improvements'])
                     return evaluation
             except json.JSONDecodeError:
                 log(f"JSON parse error in evaluation: {content[:200]}")

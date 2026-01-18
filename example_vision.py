@@ -7,7 +7,8 @@
 from test_vision import ask_ai_about_image, extract_answer
 
 # Вставьте ваш API ключ OpenRouter здесь
-API_KEY = "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"  # Или оставьте None для использования .env
+# Для работы примера необходимо установить API ключ
+API_KEY = None  # Или оставьте None для использования .env
 
 # Пример 1: Анализ изображения по URL
 print("Анализ изображения кота...\n")
