@@ -31,7 +31,19 @@ jobs:
         with:
           buildozer_version: master
           command: |
-            yes | sdkmanager --sdk_root=$ANDROIDSDK "platforms;android-31" "build-tools;31.0.0" || true
+            # Attempt to build once to ensure SDK is downloaded (it might fail on missing API)
+            buildozer android debug || true
+            
+            # Find sdkmanager and install the missing platform
+            export SDK_TOOL=$(find $ANDROIDSDK -name sdkmanager 2>/dev/null | head -n 1)
+            if [ -n "$SDK_TOOL" ]; then
+              echo "Found sdkmanager at $SDK_TOOL"
+              yes | $SDK_TOOL --sdk_root=$ANDROIDSDK "platforms;android-31" "build-tools;31.0.0"
+            else
+              echo "Could not find sdkmanager in $ANDROIDSDK"
+            fi
+            
+            # Run the build again
             buildozer android debug
           repository_display_name: SmartTest
         env:
