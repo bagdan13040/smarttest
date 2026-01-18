@@ -24,43 +24,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .buildozer
-          key: buildozer-${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}-v2
 
       - name: Build with Buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
         with:
           buildozer_version: master
-          command: |
-            # Attempt to build once to ensure SDK is downloaded (it might fail on missing API)
-            buildozer android debug || true
-            
-            # Find sdkmanager and install the missing platform
-            export SDK_TOOL=$(find $ANDROIDSDK -name sdkmanager 2>/dev/null | head -n 1)
-            if [ -n "$SDK_TOOL" ]; then
-              echo "Found sdkmanager at $SDK_TOOL"
-              yes | $SDK_TOOL --sdk_root=$ANDROIDSDK "platforms;android-31" "build-tools;31.0.0"
-            else
-              echo "Could not find sdkmanager in $ANDROIDSDK"
-            fi
-            
-            # FIX: Handle potential android-12 vs android-31 naming mismatch
-            # API 31 is sometimes extracted as 'android-12' in the platforms folder
-            if [ -d "$ANDROIDSDK/platforms/android-12" ] && [ ! -d "$ANDROIDSDK/platforms/android-31" ]; then
-                echo "Renaming android-12 to android-31 for buildozer compatibility"
-                mv "$ANDROIDSDK/platforms/android-12" "$ANDROIDSDK/platforms/android-31"
-            fi
-            
-            # Debug: List contents to verify what exists
-            echo "Contents of platforms directory:"
-            ls -la $ANDROIDSDK/platforms || echo "Platforms directory not found"
-
-            # Run the build again
-            buildozer android debug
+          command: buildozer android debug
           repository_display_name: SmartTest
         env:
           USER: root
           PIP_BREAK_SYSTEM_PACKAGES: 1
-          LDFLAGS: "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
