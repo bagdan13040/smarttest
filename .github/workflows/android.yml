@@ -30,7 +30,9 @@ jobs:
         uses: ArtemSBulgakov/buildozer-action@v1
         with:
           buildozer_version: master
-          command: buildozer android debug
+          command: |
+            yes | sdkmanager --sdk_root=$ANDROIDSDK "platforms;android-31" "build-tools;31.0.0" || true
+            buildozer android debug
           repository_display_name: SmartTest
         env:
           USER: root
