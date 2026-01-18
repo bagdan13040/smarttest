@@ -34,6 +34,7 @@ jobs:
           repository_display_name: SmartTest
         env:
           USER: root
+          PIP_BREAK_SYSTEM_PACKAGES: 1
           LDFLAGS: "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
 
       - name: Upload APK
