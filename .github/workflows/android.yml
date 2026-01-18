@@ -43,6 +43,17 @@ jobs:
               echo "Could not find sdkmanager in $ANDROIDSDK"
             fi
             
+            # FIX: Handle potential android-12 vs android-31 naming mismatch
+            # API 31 is sometimes extracted as 'android-12' in the platforms folder
+            if [ -d "$ANDROIDSDK/platforms/android-12" ] && [ ! -d "$ANDROIDSDK/platforms/android-31" ]; then
+                echo "Renaming android-12 to android-31 for buildozer compatibility"
+                mv "$ANDROIDSDK/platforms/android-12" "$ANDROIDSDK/platforms/android-31"
+            fi
+            
+            # Debug: List contents to verify what exists
+            echo "Contents of platforms directory:"
+            ls -la $ANDROIDSDK/platforms || echo "Platforms directory not found"
+
             # Run the build again
             buildozer android debug
           repository_display_name: SmartTest
