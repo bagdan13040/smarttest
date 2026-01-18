@@ -24,7 +24,7 @@ version = 1.4
 # requests + certifi needed for proper SSL/DNS resolution on Android
 # plyer for native features (file picker, camera, etc.)
 # Updated requirements for KivyMD and requests
-requirements = python3,kivy==2.3.1,kivymd==1.2.0,python-dotenv,certifi,pyjnius,plyer,requests
+requirements = python3,kivy==2.3.1,kivymd==1.2.0,python-dotenv,certifi,pyjnius,plyer,requests,filetype
 
 # (str) Icon of the application
 icon.filename = assets/icon.png
