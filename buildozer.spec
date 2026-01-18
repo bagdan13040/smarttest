@@ -50,6 +50,9 @@ android.archs = arm64-v8a
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
 
+# (bool) Accept SDK license
+android.accept_sdk_license = True
+
 # (str) Android entry point, default is ok
 android.entrypoint = org.kivy.android.PythonActivity
 
