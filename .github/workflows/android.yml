@@ -33,6 +33,7 @@ jobs:
           command: buildozer android debug
           repository_display_name: SmartTest
         env:
+          USER: root
           LDFLAGS: "-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
 
       - name: Upload APK
