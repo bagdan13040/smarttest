@@ -4583,6 +4583,7 @@ class MyApp(MDApp):
             
             # Сохраняем персонализацию
             self.settings_store.put('personalization', interests=interests, enabled=personalization_enabled)
+            self.log(f"Settings saved: Personalization: {'ENABLED' if personalization_enabled else 'DISABLED'}, Interests: '{interests}'")
             
             # Сохраняем имя пользователя
             if username:
