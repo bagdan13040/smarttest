@@ -3619,8 +3619,27 @@ class TheoryScreen(Screen):
     meta_title = StringProperty('')
     meta_sub = StringProperty('')
 
+    def _add_paragraph_label(self, container, text):
+        """Вспомогательный метод для добавления одной метки параграфа с правильными отступами"""
+        if not text.strip():
+            return
+        lbl = Label(
+            text=text,
+            color=(0.15, 0.15, 0.15, 1),
+            font_size='16sp',
+            size_hint_y=None,
+            halign='left',
+            valign='top',
+            markup=True,
+            padding=[dp(8), dp(4)]
+        )
+        # Динамическая привязка размеров
+        lbl.bind(width=lambda l, w: setattr(l, 'text_size', (w - dp(16), None)))
+        lbl.bind(texture_size=lambda l, s: setattr(l, 'height', s[1] + dp(12)))
+        container.add_widget(lbl)
+
     def on_theory_content(self, instance, value):
-        """Парсит теорию и создаёт виджеты для отображения (разбивает на части для стабильности)"""
+        """Парсит теорию и создаёт компактные виджеты для удобного чтения"""
         if 'theory_container' not in self.ids:
             return
             
@@ -3630,45 +3649,35 @@ class TheoryScreen(Screen):
         if not value:
             return
             
-        # Разбиваем на параграфы для предотвращения ошибок с текстурами (max texture size)
-        paragraphs = value.split('\n')
+        # Разбиваем текст по переносам строк
+        raw_lines = value.split('\n')
         
-        # Группируем пустые строки для сохранения структуры, но не создаем слишком много виджетов
-        current_text = []
-        
-        def add_text_widget(text_lines):
-            full_text = '\n'.join(text_lines).strip()
-            if not full_text:
-                return
-            
-            # Создаем Label с автоматическим переносом
-            lbl = Label(
-                text=full_text,
-                color=(0.15, 0.15, 0.15, 1),
-                font_size='16sp',
-                size_hint_y=None,
-                halign='left',
-                valign='top',
-                markup=True,
-                padding=[dp(5), dp(5)]
-            )
-            # Магия динамической высоты Kivy
-            lbl.bind(width=lambda l, w: setattr(l, 'text_size', (w - dp(10), None)))
-            lbl.bind(texture_size=lambda l, s: setattr(l, 'height', s[1] + dp(10)))
-            container.add_widget(lbl)
+        for line in raw_lines:
+            line = line.strip()
+            if not line:
+                # Добавляем пустой спейсер для визуального разделения
+                container.add_widget(Widget(size_hint_y=None, height=dp(14)))
+                continue
 
-        for line in paragraphs:
-            if not line.strip():
-                if current_text:
-                    add_text_widget(current_text)
-                    current_text = []
-                # Добавляем небольшой разделитель для пустой строки
-                container.add_widget(Widget(size_hint_y=None, height=dp(10)))
+            # Если строка слишком длинная (стена текста), разбиваем её принудительно
+            if len(line) > 800:
+                words = line.split(' ')
+                current_chunk = []
+                current_len = 0
+                
+                for word in words:
+                    current_chunk.append(word)
+                    current_len += len(word) + 1
+                    if current_len > 550: # Оптимальный размер "короткого" абзаца
+                        self._add_paragraph_label(container, ' '.join(current_chunk))
+                        current_chunk = []
+                        current_len = 0
+                
+                if current_chunk:
+                    self._add_paragraph_label(container, ' '.join(current_chunk))
             else:
-                current_text.append(line)
-        
-        if current_text:
-            add_text_widget(current_text)
+                # Обычная строка
+                self._add_paragraph_label(container, line)
 
     def open_ai_assistant(self):
         """Открывает окно диалога с ИИ"""
