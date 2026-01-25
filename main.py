@@ -1555,7 +1555,7 @@ ScreenManager:
                 size_hint_y: None
                 height: self.minimum_height
                 padding: [dp(10), dp(10)]
-                spacing: dp(12)
+                spacing: dp(4)
 
         BoxLayout:
             size_hint_y: None
@@ -3631,11 +3631,11 @@ class TheoryScreen(Screen):
             halign='left',
             valign='top',
             markup=True,
-            padding=[dp(8), dp(4)]
+            padding=[dp(8), dp(2)]
         )
         # Динамическая привязка размеров
         lbl.bind(width=lambda l, w: setattr(l, 'text_size', (w - dp(16), None)))
-        lbl.bind(texture_size=lambda l, s: setattr(l, 'height', s[1] + dp(12)))
+        lbl.bind(texture_size=lambda l, s: setattr(l, 'height', s[1] + dp(4)))
         container.add_widget(lbl)
 
     def on_theory_content(self, instance, value):
@@ -3656,7 +3656,7 @@ class TheoryScreen(Screen):
             line = line.strip()
             if not line:
                 # Добавляем пустой спейсер для визуального разделения
-                container.add_widget(Widget(size_hint_y=None, height=dp(14)))
+                container.add_widget(Widget(size_hint_y=None, height=dp(8)))
                 continue
 
             # Если строка слишком длинная (стена текста), разбиваем её принудительно
