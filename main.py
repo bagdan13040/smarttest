@@ -2522,7 +2522,6 @@ class RoundedButton(Button):
         bg_color: Цвет фона кнопки в формате [R, G, B, A]
     """
     bg_color = ListProperty([0.15, 0.55, 0.9, 1])
-    press_anim = NumericProperty(0)  # 0 = нормально, 1 = нажато
 
     def __init__(self, **kwargs):
         """Инициализация кнопки с прозрачным стандартным фоном"""
@@ -2537,7 +2536,6 @@ class RoundedButton(Button):
             self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(14)])
         self.bind(pos=self._update_rect, size=self._update_rect)
         self.bind(bg_color=self._update_color)
-        self.bind(press_anim=self._update_color)
 
     def _update_rect(self, *args):
         """Обновляет позицию и размер фона при изменении кнопки"""
@@ -2547,23 +2545,20 @@ class RoundedButton(Button):
 
     def _update_color(self, *args):
         """Обновляет цвет фона при изменении bg_color"""
-        # Применяем эффект нажатия через затемнение
-        base_color = self.bg_color
-        if self.press_anim > 0:
-            # Затемняем цвет при нажатии
-            factor = 1.0 - (self.press_anim * 0.4)  # До 40% затемнения
-            self._rect_color.rgba = (base_color[0] * factor, base_color[1] * factor, 
-                                     base_color[2] * factor, base_color[3])
-        else:
-            self._rect_color.rgba = base_color
+        self._rect_color.rgba = self.bg_color
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
-            Animation(press_anim=1.0, d=0.05, t='out_quad').start(self)
+            # Затемняем цвет при нажатии
+            base_color = self.bg_color
+            factor = 0.6  # 60% от исходной яркости
+            self._rect_color.rgba = (base_color[0] * factor, base_color[1] * factor, 
+                                     base_color[2] * factor, base_color[3])
         return super().on_touch_down(touch)
 
     def on_touch_up(self, touch):
-        Animation(press_anim=0.0, d=0.1, t='out_quad').start(self)
+        # Восстанавливаем исходный цвет
+        self._rect_color.rgba = self.bg_color
         return super().on_touch_up(touch)
 
 
@@ -2671,7 +2666,6 @@ class IconButton(MDIconButton):
     """
     default_source = StringProperty('')
     pressed_source = StringProperty('')
-    icon_opacity = NumericProperty(1.0)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -2681,11 +2675,11 @@ class IconButton(MDIconButton):
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
-            Animation(icon_opacity=0.6, d=0.05, t='out_quad').start(self)
+            self.text_color = (0.2 * 0.6, 0.2 * 0.6, 0.2 * 0.6, 0.8)
         return super().on_touch_down(touch)
 
     def on_touch_up(self, touch):
-        Animation(icon_opacity=1.0, d=0.1, t='out_quad').start(self)
+        self.text_color = (0.2, 0.2, 0.2, 1)
         return super().on_touch_up(touch)
 
     def on_touch_down(self, touch):
@@ -2883,11 +2877,12 @@ class IconToggleButton(ButtonBehavior, MDIcon):
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
-            Animation(font_size="24sp", d=0.05, t='out_quad').start(self)
+            self.text_color = (self.text_color[0] * 0.7, self.text_color[1] * 0.7, 
+                               self.text_color[2] * 0.7, 0.9)
         return super().on_touch_down(touch)
 
     def on_touch_up(self, touch):
-        Animation(font_size="28sp", d=0.1, t='out_quad').start(self)
+        self._update_style()
         return super().on_touch_up(touch)
 
     def on_icon_source(self, instance, value):
