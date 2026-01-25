@@ -261,7 +261,7 @@ def save_course_topic(topic, memory_file='course_topics.json'):
             log(f"Не удалось сохранить память тем: {e}")
 
 
-def generate_learning_roadmap(topic, goal=None, level="начинающий", api_key=None):
+def generate_learning_roadmap(topic, goal=None, level="начинающий", api_key=None, interests=None):
     """
     Генерирует дорожную карту обучения для указанной темы.
     
@@ -270,33 +270,20 @@ def generate_learning_roadmap(topic, goal=None, level="начинающий", ap
         goal: Цель обучения (например, "стать веб-разработчиком")
         level: Уровень обучающегося ("начинающий", "средний", "продвинутый")
         api_key: API ключ для OpenRouter
+        interests: Интересы пользователя для персонализации
         
     Returns:
         dict с структурой:
         {
             "title": "название программы",
-            "description": "описание",
-            "estimated_time": "примерное время прохождения",
-            "modules": [
-                {
-                    "id": "module_1",
-                    "title": "Название модуля",
-                    "description": "Описание модуля",
-                    "order": 1,
-                    "topics": ["тема1", "тема2", ...],
-                    "difficulty": "легкий|средний|эксперт",
-                    "prerequisites": ["module_id1", "module_id2"],
-                    "estimated_hours": 10
-                },
-                ...
-            ],
-            "error": "текст ошибки" (если произошла ошибка)
+            ...
         }
     """
     log(f"=== generate_learning_roadmap() starting ===")
     log(f"  Topic: {topic}")
     log(f"  Goal: {goal}")
     log(f"  Level: {level}")
+    log(f"  Interests: {interests}")
     
     if not api_key:
         api_key = os.getenv("OPENROUTER_API_KEY")
@@ -314,8 +301,9 @@ def generate_learning_roadmap(topic, goal=None, level="начинающий", ap
     }
     
     goal_text = f" с целью: {goal}" if goal else ""
+    interests_text = f" Студенту нравятся: {interests}. Учитывай это при составлении описаний и подборе примеров. " if interests else ""
     
-    prompt = f"""Тема: "{topic}"{goal_text}. Уровень: {level}.
+    prompt = f"""Тема: "{topic}"{goal_text}. Уровень: {level}.{interests_text}
 
 Составь план обучения из 5-7 модулей. Для каждого модуля укажи 3-5 ключевых понятий (topics).
 Верни JSON:
@@ -1108,14 +1096,13 @@ def generate_mock_roadmap(topic, goal=None, level="начинающий"):
     return roadmap
 
 
-def generate_quiz(topic, difficulty="средний", api_key=None):
+def generate_quiz(topic, difficulty="средний", api_key=None, interests=None):
     """Generate a quiz using OpenRouter API"""
     log(f"=== generate_quiz() starting ===")
     log(f"  Topic: {topic}")
     log(f"  Difficulty: {difficulty}")
+    log(f"  Interests: {interests}")
     log(f"  API key provided: {api_key is not None}")
-    log(f"  Platform: {sys.platform}")
-    log(f"  IS_ANDROID: {IS_ANDROID}")
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     timeout = 120  # Увеличен с 60 для медленного интернета
@@ -1139,10 +1126,12 @@ def generate_quiz(topic, difficulty="средний", api_key=None):
         "HTTP-Referer": "https://github.com/bagdan13040/smarttest",
         "X-Title": "SmartTest"
     }
-    log(f"Headers prepared: {list(headers.keys())}")
+    
+    # Добавляем контекст интересов, если они есть
+    interests_context = f" Студенту нравятся: {interests}. Используй это для примеров и ассоциаций в тексте теории, чтобы сделать обучение более интересным и понятным, но делай это естественно, без навязчивости. " if interests else ""
     
     prompt = (
-        f"Тема: '{topic}'. Сложность: '{difficulty}'. "
+        f"Тема: '{topic}'. Сложность: '{difficulty}'.{interests_context} "
         "1. Напиши теоретический материал объемом не менее 1000 слов, с глубиной и детализацией, как в полноценной статье Википедии. "
         "Раздели его на логические разделы и подразделы, поясняй термины, приводи примеры, сравнения и исторический контекст там, где это уместно. "
         "Используй теги [b]...[/b] для важных понятий и \n для параграфов/списков. "

@@ -1273,6 +1273,61 @@ ScreenManager:
             Widget:
                 size_hint_y: None
                 height: dp(24)
+            
+            # --- ПЕРСОНАЛИЗАЦИЯ (НОВОЕ) ---
+            Label:
+                text: 'ВАШИ ИНТЕРЕСЫ И ХОББИ'
+                color: 0.6, 0.6, 0.6, 1
+                font_size: '11sp'
+                size_hint_y: None
+                height: dp(20)
+                halign: 'left'
+                text_size: (self.width, None)
+            
+            TextInput:
+                id: interests_input
+                hint_text: 'Например: гонки, кулинария, космос...'
+                multiline: True
+                size_hint_y: None
+                height: dp(80)
+                font_size: '16sp'
+                padding: [dp(14), dp(14)]
+                background_normal: ''
+                background_active: ''
+                foreground_color: 0.1, 0.1, 0.1, 1
+                cursor_color: 0.15, 0.55, 0.9, 1
+                canvas:
+                    Color:
+                        rgba: 1, 1, 1, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(12)]
+
+            Widget:
+                size_hint_y: None
+                height: dp(16)
+            
+            BoxLayout:
+                size_hint_y: None
+                height: dp(40)
+                spacing: dp(12)
+                Label:
+                    text: 'ПЕРСОНАЛИЗАЦИЯ КУРСОВ'
+                    color: 0.2, 0.2, 0.2, 1
+                    font_size: '14sp'
+                    halign: 'left'
+                    text_size: (self.width, None)
+                RoundSwitch:
+                    id: personalization_switch
+                    active: False
+                    size_hint_x: None
+                    width: dp(50)
+                    pos_hint: {'center_y': .5}
+
+            Widget:
+                size_hint_y: None
+                height: dp(24)
 
             RoundedButton:
                 text: 'СОХРАНИТЬ ИЗМЕНЕНИЯ'
@@ -4493,6 +4548,12 @@ class MyApp(MDApp):
                 key = data.get('api_key', data.get('key', ''))
                 settings_screen.ids.api_key_input.text = key
             
+            # Загружаем интересы
+            if self.settings_store.exists('personalization'):
+                p_data = self.settings_store.get('personalization')
+                settings_screen.ids.interests_input.text = p_data.get('interests', '')
+                settings_screen.ids.personalization_switch.active = p_data.get('enabled', False)
+            
             # Загружаем данные геймификации
             settings_screen.ids.username_input.text = self.gamification.username
         except Exception as e:
@@ -4509,9 +4570,14 @@ class MyApp(MDApp):
             settings_screen = main_screen.ids.tab_manager.get_screen('settings')
             key = settings_screen.ids.api_key_input.text.strip()
             username = settings_screen.ids.username_input.text.strip()
+            interests = settings_screen.ids.interests_input.text.strip()
+            personalization_enabled = settings_screen.ids.personalization_switch.active
             
             # Сохраняем API ключ
             self.settings_store.put('api', api_key=key)
+            
+            # Сохраняем персонализацию
+            self.settings_store.put('personalization', interests=interests, enabled=personalization_enabled)
             
             # Сохраняем имя пользователя
             if username:
@@ -4689,7 +4755,21 @@ class MyApp(MDApp):
                 roadmap = generate_mock_roadmap(topic, level=difficulty)
             else:
                 from llm import generate_learning_roadmap
-                roadmap = generate_learning_roadmap(topic, level=difficulty, api_key=api_key)
+                
+                # Получаем настройки персонализации
+                interests = ""
+                personalization_enabled = False
+                if self.settings_store.exists('personalization'):
+                    p_data = self.settings_store.get('personalization')
+                    interests = p_data.get('interests', '')
+                    personalization_enabled = p_data.get('enabled', False)
+                
+                roadmap = generate_learning_roadmap(
+                    topic, 
+                    level=difficulty, 
+                    api_key=api_key,
+                    interests=interests if personalization_enabled else None
+                )
             
             if roadmap.get('error'):
                 Clock.schedule_once(lambda dt: self._show_generation_error(roadmap['error']))
@@ -4875,10 +4955,26 @@ class MyApp(MDApp):
             else:
                 self.log(f"Starting generation for {topic}...")
                 self.log(f"Difficulty: {difficulty}")
-                self.log(f"API key available: Yes (length: {len(api_key)})")
+                
+                # Получаем настройки персонализации
+                interests = ""
+                personalization_enabled = False
+                if self.settings_store.exists('personalization'):
+                    p_data = self.settings_store.get('personalization')
+                    interests = p_data.get('interests', '')
+                    personalization_enabled = p_data.get('enabled', False)
+                
+                self.log(f"Personalization enabled: {personalization_enabled}")
+                if personalization_enabled and interests:
+                    self.log(f"Using interests for context: {interests[:30]}...")
                 
                 # Вызываем LLM для генерации курса
-                result = generate_quiz(topic, difficulty, api_key=api_key)
+                result = generate_quiz(
+                    topic, 
+                    difficulty, 
+                    api_key=api_key,
+                    interests=interests if personalization_enabled else None
+                )
                 
                 if result:
                     if 'error' in result:
