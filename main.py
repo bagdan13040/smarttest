@@ -610,6 +610,12 @@ ScreenManager:
 # MainScreen - Главный экран приложения с тремя табами
 <MainScreen>:
     name: 'main'
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
     BoxLayout:
         orientation: 'vertical'
         size_hint: (1, 1)
@@ -1472,6 +1478,12 @@ ScreenManager:
 
 <TheoryScreen>:
     name: 'theory'
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
     BoxLayout:
         orientation: 'vertical'
         padding: 16
@@ -1536,18 +1548,14 @@ ScreenManager:
                 halign: 'right'
 
         ScrollView:
-            Label:
-                id: theory_text
-                text: root.theory_content
-                color: 0.2, 0.2, 0.2, 1
-                font_size: '16sp'
+            id: theory_scroll
+            BoxLayout:
+                id: theory_container
+                orientation: 'vertical'
                 size_hint_y: None
-                height: self.texture_size[1]
-                text_size: self.width, None
-                halign: 'left'
-                valign: 'top'
+                height: self.minimum_height
                 padding: [dp(10), dp(10)]
-                markup: True
+                spacing: dp(12)
 
         BoxLayout:
             size_hint_y: None
@@ -1570,6 +1578,12 @@ ScreenManager:
     name: 'loading'
     on_enter: root.start_fact_cycle()
     on_leave: root.stop_fact_cycle()
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
     BoxLayout:
         orientation: 'vertical'
         padding: dp(20)
@@ -1701,6 +1715,12 @@ ScreenManager:
 
 <OpenAnswerScreen>:
     name: 'open_answer'
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
     BoxLayout:
         orientation: 'vertical'
         padding: dp(16)
@@ -2145,6 +2165,12 @@ ScreenManager:
 
 <RoadmapScreen>:
     name: 'roadmap'
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
     BoxLayout:
         orientation: 'vertical'
         
@@ -3592,6 +3618,57 @@ class TheoryScreen(Screen):
     theory_content = StringProperty('')
     meta_title = StringProperty('')
     meta_sub = StringProperty('')
+
+    def on_theory_content(self, instance, value):
+        """Парсит теорию и создаёт виджеты для отображения (разбивает на части для стабильности)"""
+        if 'theory_container' not in self.ids:
+            return
+            
+        container = self.ids.theory_container
+        container.clear_widgets()
+        
+        if not value:
+            return
+            
+        # Разбиваем на параграфы для предотвращения ошибок с текстурами (max texture size)
+        paragraphs = value.split('\n')
+        
+        # Группируем пустые строки для сохранения структуры, но не создаем слишком много виджетов
+        current_text = []
+        
+        def add_text_widget(text_lines):
+            full_text = '\n'.join(text_lines).strip()
+            if not full_text:
+                return
+            
+            # Создаем Label с автоматическим переносом
+            lbl = Label(
+                text=full_text,
+                color=(0.15, 0.15, 0.15, 1),
+                font_size='16sp',
+                size_hint_y=None,
+                halign='left',
+                valign='top',
+                markup=True,
+                padding=[dp(5), dp(5)]
+            )
+            # Магия динамической высоты Kivy
+            lbl.bind(width=lambda l, w: setattr(l, 'text_size', (w - dp(10), None)))
+            lbl.bind(texture_size=lambda l, s: setattr(l, 'height', s[1] + dp(10)))
+            container.add_widget(lbl)
+
+        for line in paragraphs:
+            if not line.strip():
+                if current_text:
+                    add_text_widget(current_text)
+                    current_text = []
+                # Добавляем небольшой разделитель для пустой строки
+                container.add_widget(Widget(size_hint_y=None, height=dp(10)))
+            else:
+                current_text.append(line)
+        
+        if current_text:
+            add_text_widget(current_text)
 
     def open_ai_assistant(self):
         """Открывает окно диалога с ИИ"""
