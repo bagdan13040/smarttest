@@ -2554,11 +2554,15 @@ class RoundedButton(Button):
             factor = 0.6  # 60% от исходной яркости
             self._rect_color.rgba = (base_color[0] * factor, base_color[1] * factor, 
                                      base_color[2] * factor, base_color[3])
+            # Восстанавливаем цвет через 100ms (быстрый импульс)
+            Clock.schedule_once(lambda dt: self._restore_color(), 0.1)
         return super().on_touch_down(touch)
 
-    def on_touch_up(self, touch):
-        # Восстанавливаем исходный цвет
+    def _restore_color(self):
+        """Восстанавливает исходный цвет"""
         self._rect_color.rgba = self.bg_color
+
+    def on_touch_up(self, touch):
         return super().on_touch_up(touch)
 
 
@@ -2676,10 +2680,11 @@ class IconButton(MDIconButton):
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
             self.text_color = (0.2 * 0.6, 0.2 * 0.6, 0.2 * 0.6, 0.8)
+            # Восстанавливаем цвет через 100ms (быстрый импульс)
+            Clock.schedule_once(lambda dt: setattr(self, 'text_color', (0.2, 0.2, 0.2, 1)), 0.1)
         return super().on_touch_down(touch)
 
     def on_touch_up(self, touch):
-        self.text_color = (0.2, 0.2, 0.2, 1)
         return super().on_touch_up(touch)
 
     def on_touch_down(self, touch):
@@ -2879,10 +2884,11 @@ class IconToggleButton(ButtonBehavior, MDIcon):
         if self.collide_point(*touch.pos):
             self.text_color = (self.text_color[0] * 0.7, self.text_color[1] * 0.7, 
                                self.text_color[2] * 0.7, 0.9)
+            # Восстанавливаем цвет через 100ms (быстрый импульс)
+            Clock.schedule_once(lambda dt: self._update_style(self, self.active), 0.1)
         return super().on_touch_down(touch)
 
     def on_touch_up(self, touch):
-        self._update_style()
         return super().on_touch_up(touch)
 
     def on_icon_source(self, instance, value):
