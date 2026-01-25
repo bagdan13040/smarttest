@@ -1486,17 +1486,18 @@ ScreenManager:
             size: self.size
     BoxLayout:
         orientation: 'vertical'
-        padding: 16
-        spacing: 12
+        padding: [dp(16), dp(40), dp(16), dp(16)]
+        spacing: dp(12)
 
         BoxLayout:
             size_hint_y: None
-            height: 50
-            spacing: 10
+            height: dp(50)
+            spacing: dp(10)
             
             IconButton:
                 size_hint: None, None
-                size: dp(36), dp(36)
+                size: dp(40), dp(40)
+                pos_hint: {'center_y': .5}
                 default_source: 'arrow-left'
                 pressed_source: 'arrow-left'
                 on_release: app.root.current = 'main'
@@ -1511,7 +1512,7 @@ ScreenManager:
             Label:
                 text: 'Теория'
                 color: 0.15, 0.55, 0.9, 1
-                font_size: '24sp'
+                font_size: '22sp'
                 bold: True
                 halign: 'center'
                 text_size: self.size
@@ -1519,7 +1520,8 @@ ScreenManager:
 
             IconButton:
                 size_hint: None, None
-                size: dp(36), dp(36)
+                size: dp(40), dp(40)
+                pos_hint: {'center_y': .5}
                 icon: 'robot'
                 theme_text_color: "Custom"
                 text_color: 0.15, 0.55, 0.9, 1
@@ -1635,7 +1637,7 @@ ScreenManager:
 
     BoxLayout:
         orientation: 'vertical'
-        padding: [dp(20), dp(16), dp(20), dp(16)]
+        padding: [dp(20), dp(40), dp(20), dp(16)]
         spacing: dp(24)
 
         # Progress Bar with percentage
@@ -1723,7 +1725,7 @@ ScreenManager:
             size: self.size
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(16)
+        padding: [dp(16), dp(40), dp(16), dp(16)]
         spacing: dp(12)
 
         BoxLayout:
@@ -1957,7 +1959,7 @@ ScreenManager:
 
     BoxLayout:
         orientation: 'vertical'
-        padding: [dp(16), dp(16), dp(16), dp(16)]
+        padding: [dp(16), dp(40), dp(16), dp(16)]
         spacing: dp(0)
 
         ScrollView:
@@ -2173,6 +2175,7 @@ ScreenManager:
             size: self.size
     BoxLayout:
         orientation: 'vertical'
+        padding: [0, dp(30), 0, 0]
         
         # Header с названием roadmap
         BoxLayout:
