@@ -3727,6 +3727,11 @@ class TheoryScreen(Screen):
 
     def _add_paragraph_label(self, container, text):
         """Вспомогательный метод для добавления одной метки параграфа с правильными отступами"""
+        # Очистка от неподдерживаемых тегов типа [p], [/p] и Markdown остатков
+        import re
+        text = re.sub(r'\[/?p\]', '', text)
+        text = text.replace('**', '').replace('###', '').replace('##', '')
+        
         if not text.strip():
             return
         lbl = Label(
