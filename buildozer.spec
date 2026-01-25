@@ -42,7 +42,7 @@ android.minapi = 21
 android.sdk = 33
 
 # (str) Android NDK version
-android.ndk = 25b
+android.ndk = 25.1.8937393
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 android.archs = arm64-v8a
