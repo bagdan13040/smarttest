@@ -63,6 +63,7 @@ try:
     from kivy.graphics import Color, RoundedRectangle, Rectangle, Line, Ellipse  # Графические примитивы
     print("[MAIN] Clock imported")
     from kivy.clock import Clock  # Планировщик событий
+    from kivy.animation import Animation # Анимации
     print("[MAIN] metrics imported")
 except Exception as e:
     print(f"[MAIN] ERROR importing kivy: {e}")
@@ -2546,6 +2547,21 @@ class RoundedButton(Button):
         """Обновляет цвет фона при изменении bg_color"""
         self._rect_color.rgba = self.bg_color
 
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            # Анимация нажатия (уменьшение)
+            Animation(size=(self.width*0.95, self.height*0.95), 
+                      pos=(self.x + self.width*0.025, self.y + self.height*0.025), 
+                      d=0.05, t='out_quad').start(self)
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        # Анимация возврата (исходный размер)
+        Animation(size=(self.width, self.height), 
+                  pos=(self.x, self.y), 
+                  d=0.1, t='out_quad').start(self)
+        return super().on_touch_up(touch)
+
 
 class RoundSwitch(ButtonBehavior, Widget):
     """
@@ -2657,7 +2673,17 @@ class IconButton(MDIconButton):
         self.theme_text_color = "Custom"
         self.text_color = (0.2, 0.2, 0.2, 1)
         self.bind(state=self._update_source)
-        if self.default_source:
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            Animation(scale=0.85, d=0.05, t='out_quad').start(self)
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        Animation(scale=1.0, d=0.1, t='out_quad').start(self)
+        return super().on_touch_up(touch)
+
+    def _update_source(self, instance, value):
             self.icon = self.default_source
 
     def on_default_source(self, instance, value):
@@ -2840,8 +2866,15 @@ class IconToggleButton(ButtonBehavior, MDIcon):
         self.valign = "middle"
         self.font_size = "28sp"
         self.bind(active=self._update_style)
-        if self.icon_source:
-            self.icon = self.icon_source
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            Animation(font_size="22sp", d=0.05, t='out_quad').start(self)
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        Animation(font_size="28sp", d=0.1, t='out_quad').start(self)
+        return super().on_touch_up(touch)
 
     def on_icon_source(self, instance, value):
         """Устанавливает иконку"""
