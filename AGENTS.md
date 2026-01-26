@@ -5,13 +5,13 @@
 **SmartTest** - мобильное приложение на Kivy для адаптивного обучения с использованием LLM (Language Model).
 
 ### Основная концепция
-Приложение генерирует персонализированные учебные материалы и тесты по любой теме, оценивает ответы пользователя через LLM, и адаптирует сложность на основе результатов.
+Приложение генерирует персонализированные учебные материалы и тесты по любой теме, оценивает ответы пользователя через LLM, и адаптирует сложность на основе результатов. Поддерживает как одиночные уроки, так и полноценные "Дорожные карты" (Roadmaps).
 
 ### Технологический стек
-- **Framework**: Kivy 2.3.1 (Python GUI)
+- **Framework**: Kivy 2.3.1 (Python GUI) + KivyMD
 - **Language**: Python 3.10+
-- **LLM Integration**: Пользовательский модуль `llm.py`
-- **Storage**: JSON-based (JsonStore, CourseStorage)
+- **LLM Integration**: Пользовательский модуль `llm.py` (OpenRouter API)
+- **Storage**: JSON-based (JsonStore, `courses.json`, `roadmaps.json`)
 - **Target Platform**: Android (с поддержкой Desktop)
 
 ---
@@ -20,9 +20,10 @@
 
 ### Структура файлов
 ```
-main.py               # Основной файл приложения (~2800 строк)
-llm.py               # LLM интеграция
+main.py               # Основной файл приложения (~5850 строк)
+llm.py               # LLM интеграция (1400+ строк)
 courses.json         # Хранилище курсов
+roadmaps.json        # Хранилище дорожных карт
 settings.json        # Настройки пользователя
 open_questions_cache.json  # Кеш развёрнутых вопросов
 course_topics.json   # История тем
@@ -34,545 +35,103 @@ assets/              # Иконки и ресурсы
 #### 1. Экраны (Screens)
 ```
 MainScreen           → Главный экран с тремя табами
-├── SavedScreen      → Список сохранённых курсов
-├── SearchScreen     → Поиск и создание курсов
-└── SettingsScreen   → Настройки API
+├── SavedScreen      → Список сохранённых курсов и дорожных карт
+├── SearchScreen     → Поиск и создание (Урок / Дорожная карта)
+└── SettingsScreen   → Настройки API и системы
 
 LoadingScreen        → Экран загрузки с фактами
 TheoryScreen         → Отображение теории
 QuizScreen           → MC тест (множественный выбор)
 OpenAnswerScreen     → Развёрнутые ответы
+RoadmapScreen        → Визуализация программы обучения (Grafo-подобная сетка)
 FinalScreen          → Финальный отчёт с ошибками
 ```
 
 #### 2. Хранилища данных
 
-**CourseStorage** (`courses.json`):
-```python
-{
-  "meta": {
-    "topic": "название темы",
-    "difficulty": "легкий|средний|эксперт",
-    "history": [...],
-    "notes": {"quick_hint": "..."}
-  },
-  "theory": "текст теории",
-  "questions": [...],
-  "open_questions": [...]
-}
-```
+**CourseStorage** (`courses.json`): Хранит отдельные уроки.
+**RoadmapStorage** (`roadmaps.json`): Хранит дорожные карты и прогресс по модулям.
 
 **Кеш открытых вопросов** (`open_questions_cache.json`):
 ```python
 {
-  "тема|сложность": [вопросы...],
-  "python|легкий": [...]
+  "тема|сложность": [вопросы...]
 }
 ```
 
 #### 3. LLM Модуль (llm.py)
 
 **Ключевые функции**:
-- `generate_quiz(topic, difficulty, api_key)` - генерация курса
+- `generate_quiz(topic, difficulty, api_key, interests)` - генерация урока (теория + MC)
+- `generate_learning_roadmap(topic, goal, level, api_key)` - генерация программы из модулей
 - `generate_open_questions(topic, n, difficulty, api_key)` - открытые вопросы
 - `evaluate_answer(question, answer, notes, api_key)` - оценка ответа
-- `generate_next_topics(material, api_key)` - рекомендации тем
-
-**Возвращаемые структуры**:
-```python
-# generate_quiz
-{
-  "meta": {...},
-  "theory": "...",
-  "questions": [{"question": "...", "options": [...], "answer": int}],
-  "error": "..." (если есть)
-}
-
-# evaluate_answer
-{
-  "score": int (0-10),
-  "max_score": 10,
-  "feedback": "...",
-  "suggested_improvements": "..."
-}
-```
+- `chat_with_image(message, image_path, api_key)` - Vision-поддержка (Gemini 2.0 Flash)
 
 ---
 
 ## 🔄 Потоки Данных
 
-### 1. Создание нового курса
+### 1. Создание нового курса/карты
 ```
-SearchScreen.start_new_quiz()
+SearchScreen.start_new_quiz() / start_roadmap_generation()
     ↓
-MyApp.generate_quiz_thread() [threading]
+MyApp.generate_quiz_thread() / generate_roadmap_thread()
     ↓
-llm.generate_quiz()
+llm.generate_quiz() / llm.generate_learning_roadmap()
     ↓
 MyApp.on_generation_complete()
     ↓
-CourseStorage.save()
-    ↓
-TheoryScreen → QuizScreen
+TheoryScreen (для урока) или RoadmapScreen (для программы)
 ```
 
-### 2. Прохождение теста (с предзагрузкой)
-```
-QuizScreen.on_pre_enter()
-    ↓
-MyApp.preload_open_questions() [threading, фоновая задача]
-    ├─→ Проверка кеша
-    └─→ llm.generate_open_questions() (если нет в кеше)
-    
-Параллельно:
-QuizScreen (пользователь отвечает на вопросы)
-    ↓
-QuizScreen.finish_test()
-    ↓
-MyApp.transition_to_open_questions()
-    ├─→ Если preloaded_open_questions готов → сразу показать
-    └─→ Иначе → LoadingScreen → ожидание
-```
+### 2. Система дорожных карт (Roadmaps)
+1. Генератор создает список модулей с зависимостями (`prerequisites`).
+2. `RoadmapScreen` отрисовывает их узлами.
+3. Клик на узел открывает детали модуля.
+4. "Начать изучение" модуля запускает стандартный поток урока для темы модуля.
 
-### 3. Оценка развёрнутых ответов
-```
-OpenAnswerScreen.submit_answer()
-    ↓
-MyApp.evaluate_answer_thread() [threading]
-    ↓
-llm.evaluate_answer()
-    ↓
-MyApp.on_answer_evaluated()
-    ↓
-Сохранение в open_answers_history
-    ↓
-OpenAnswerScreen.next_question()
-    ↓
-MyApp.finish_open_questions()
-    ↓
-MyApp.show_combined_results() [объединение MC + Open]
-    ↓
-FinalScreen
-```
+### 3. Предзагрузка открытых вопросов
+Запускается в фоне на `QuizScreen`, чтобы к моменту окончания MC-теста вопросы уже были готовы (из кеша или сгенерированы).
 
 ---
 
 ## ⚡ Ключевые Особенности Реализации
 
-### 1. Система предзагрузки (Performance Optimization)
+### 1. Мульти-модельный Fallback (llm.py)
+Если основная модель (`xiaomi/mimo-v2-flash:free`) недоступна, система автоматически пробует альтернативы:
+- `google/gemini-2.0-flash-exp:free`
+- `meta-llama/llama-3.1-8b-instruct:free`
+- `mistralai/mistral-7b-instruct:free`
 
-**Проблема**: Долгое ожидание между MC тестом и открытыми вопросами.
+### 2. Поддержка Vision (Зрение)
+Интеграция функции `chat_with_image` позволяет анализировать скриншоты или фото учебников для генерации вопросов или пояснений (используется в Vision-тестах).
 
-**Решение**: 
-- `preload_open_questions()` запускается в фоне при входе на QuizScreen
-- Сначала проверяет кеш: `get_cached_open_questions()`
-- Если нет в кеше → генерирует через LLM
-- Сохраняет в `preloaded_open_questions`
-- `transition_to_open_questions()` проверяет готовность
-
-**Код**:
-```python
-# В QuizScreen.on_pre_enter()
-threading.Thread(target=app.preload_open_questions, daemon=True).start()
-
-# В QuizScreen.finish_test()
-app.transition_to_open_questions()  # Умный переход
-```
-
-### 2. Кеширование
-
-**Цель**: Избежать повторной генерации одинаковых вопросов.
-
-**Ключ кеша**: `"{topic.lower()}|{difficulty}"`
-
-**Методы**:
-- `_load_open_questions_cache()` - загрузка при старте
-- `cache_open_questions()` - сохранение после генерации
-- `get_cached_open_questions()` - получение из кеша
-- `_save_open_questions_cache()` - запись на диск
-
-### 3. Комбинированный финальный отчёт
-
-**Структура**:
-```python
-combined_errors = [
-    # Заголовок MC секции
-    {"question": "═══ РАБОТА НАД ОШИБКАМИ: ТЕСТОВАЯ ЧАСТЬ ═══", ...},
-    # Ошибки MC
-    {"question": "...", "correct": "...", "selected": "..."},
-    
-    # Визуальный разделитель
-    {"divider": True},  # → SectionDivider widget
-    
-    # Заголовок Open секции
-    {"question": "═══ РАБОТА НАД ОШИБКАМИ: РАЗВЁРНУТЫЕ ОТВЕТЫ ═══", ...},
-    # Ошибки Open
-    {...}
-]
-```
-
-**Рендеринг в FinalScreen**:
-```python
-for item in errors:
-    if item.get('divider'):
-        layout.add_widget(SectionDivider())  # Синяя линия dp(3)
-    else:
-        layout.add_widget(Label(...))  # Обычная ошибка
-```
-
-### 4. Адаптивная сложность
-
-**Логика**:
-```python
-def adjust_difficulty(percent):
-    if percent >= 80:  # Хороший результат
-        difficulty += 1  # легкий → средний → эксперт
-    elif percent <= 40:  # Плохой результат
-        difficulty -= 1  # эксперт → средний → легкий
-```
-
-### 5. Асинхронность через Threading
-
-**Все долгие операции в отдельных потоках**:
-- `generate_quiz_thread()` - генерация курса
-- `preload_open_questions()` - предзагрузка
-- `evaluate_answer_thread()` - оценка ответа
-- `MainScreen.check_network()` - проверка сети
-
-**Возврат в главный поток**:
-```python
-Clock.schedule_once(lambda dt: self.on_complete(result))
-```
+### 3. Адаптивная сложность и Контекст интересов
+При генерации курса можно передать `interests` пользователя. LLM адаптирует примеры в теории под эти интересы (например, объясняет физику через футбол).
 
 ---
 
 ## 🎨 UI/UX Паттерны
 
-### Цветовая схема
-```python
-PRIMARY_BLUE = (0.15, 0.55, 0.9, 1)   # Основной синий
-BACKGROUND = (0.95, 0.93, 0.90, 1)    # Тёплый светлый фон
-SUCCESS_GREEN = (0.3, 0.7, 0.3, 1)
-ERROR_RED = (0.9, 0.3, 0.3, 1)
-TEXT_DARK = (0.2, 0.2, 0.2, 1)
-```
+### Roadmap Visualization
+- Модули отображаются в сетке.
+- Связи отрисовываются линиями (Canvas `Line`).
+- Цвета: Серый (не начато), Синий (в процессе), Зеленый (пройдено).
 
-### Пользовательские виджеты
-
-**RoundedButton** - основные действия:
-```python
-bg_color = ListProperty([...])  # Настраиваемый цвет
-radius = [dp(14)]
-```
-
-**IconToggleButton** - навигация:
-```python
-active_color = PRIMARY_BLUE
-inactive_color = GRAY
-# Меняет цвет при переключении
-```
-
-**SectionDivider** - разделение секций:
-```python
-# Толстая синяя линия dp(3)
-# Используется в FinalScreen между MC и Open
-```
-
-### Динамические высоты
-
-**Проблема**: Наложение текста при длинных строках.
-
-**Решение**:
-```python
-label.bind(texture_size=lambda inst, size: setattr(inst, 'height', size[1] + dp(24)))
-label.bind(width=lambda inst, w: setattr(inst, 'text_size', (w - dp(24), None)))
-```
-
-### Отступы для навигации
-
-**FinalScreen ScrollView**:
-```python
-padding: [0, dp(12), 0, dp(120)]  # Нижний отступ для фиксированной навигации
-```
+### Асинхронность
+Все запросы к API идут через `threading`, чтобы не фризить UI. Обратный вызов в GUI через `Clock.schedule_once`.
 
 ---
 
-## 🔧 Советы по Модификации
+## 🔧 Типичные Проблемы и Решения
 
-### Добавление нового экрана
-
-1. **Создать класс**:
-```python
-class NewScreen(Screen):
-    pass
-```
-
-2. **Добавить в KV**:
-```python
-KV = """
-ScreenManager:
-    MainScreen:
-    NewScreen:  # Добавить здесь
-    ...
-"""
-```
-
-3. **Определить UI в KV**:
-```python
-<NewScreen>:
-    name: 'new_screen'
-    BoxLayout:
-        ...
-```
-
-### Изменение потока данных
-
-**Пример**: Добавить дополнительный тип вопросов
-
-1. Расширить структуру в `llm.py`:
-```python
-def generate_new_question_type(topic, api_key):
-    # Генерация
-    return {...}
-```
-
-2. Добавить кеш:
-```python
-self.new_questions_cache = {}
-```
-
-3. Создать экран:
-```python
-class NewQuestionScreen(Screen):
-    pass
-```
-
-4. Интегрировать в поток:
-```python
-# После OpenAnswerScreen
-app.start_new_question_type()
-```
-
-### Модификация LLM промптов
-
-**Все промпты в `llm.py`** - централизованное место для изменений.
-
-**Тестирование промптов**:
-```python
-# В Python консоли
-from llm import generate_quiz
-result = generate_quiz("Python", "легкий", api_key="...")
-print(result)
-```
-
-### Добавление новых настроек
-
-1. **Добавить в SettingsScreen (KV)**:
-```python
-<SettingsScreen>:
-    BoxLayout:
-        TextInput:
-            id: new_setting_input
-```
-
-2. **Сохранение**:
-```python
-def save_settings():
-    new_value = settings_screen.ids.new_setting_input.text
-    self.settings_store.put('settings', new_key=new_value)
-```
-
-3. **Загрузка**:
-```python
-def load_settings_ui():
-    if self.settings_store.exists('settings'):
-        data = self.settings_store.get('settings')
-        value = data.get('new_key', 'default')
-```
+- **Таймауты**: Увеличены до 120 секунд для стабильности на плохом соединении.
+- **Unicode-символы**: Используется `sanitize_unicode` в `llm.py` для замены спецсимволов на понятные Kivy ASCII/простые UTF.
+- **Android Settings**: На Android рекомендуется вводить API ключ через UI (SettingsScreen), так как `.env` часто не подхватывается.
 
 ---
 
-## 🐛 Типичные Проблемы и Решения
-
-### 1. "Вопросы не загружаются"
-
-**Причина**: Кеш повреждён или LLM не отвечает.
-
-**Решение**:
-```python
-# Очистить кеш
-os.remove('open_questions_cache.json')
-
-# Проверить LLM
-result = generate_quiz("test", "легкий", api_key="...")
-print(result.get('error'))
-```
-
-### 2. "Текст наезжает друг на друга"
-
-**Причина**: Не настроена динамическая высота.
-
-**Решение**:
-```python
-label.bind(texture_size=lambda inst, size: setattr(inst, 'height', size[1] + dp(padding)))
-```
-
-### 3. "Предзагрузка не работает"
-
-**Причина**: Поток не успел завершиться.
-
-**Проверка**:
-```python
-# В QuizScreen.finish_test()
-print(f"Preloaded: {hasattr(app, 'preloaded_open_questions')}")
-```
-
-### 4. "Навигация не видна"
-
-**Причина**: Забыли задать отступ в ScrollView.
-
-**Решение**:
-```python
-padding: [0, dp(12), 0, dp(120)]  # Увеличить нижний отступ
-```
-
----
-
-## 📊 Метрики и Производительность
-
-### Время загрузки
-
-- **Генерация курса**: ~5-15 сек (зависит от LLM)
-- **Предзагрузка открытых вопросов**: ~3-8 сек (параллельно с MC тестом)
-- **Оценка одного ответа**: ~2-5 сек
-
-### Размеры данных
-
-- `courses.json`: ~10-50 KB на курс
-- `open_questions_cache.json`: ~5-20 KB на тему
-- Общий размер приложения: ~15-20 MB (с Kivy)
-
-### Оптимизации
-
-1. **Кеширование** - избегает повторных LLM запросов
-2. **Предзагрузка** - скрывает время генерации
-3. **Threading** - не блокирует UI
-4. **Компактные структуры** - минимальный JSON
-
----
-
-## 🔐 Безопасность
-
-### API Ключи
-- Хранятся в `settings.json` (локально)
-- Не передаются в UI напрямую
-- Используются только в LLM запросах
-
-### Данные пользователя
-- Локальное хранение (JSON файлы)
-- Нет облачной синхронизации
-- Данные остаются на устройстве
-
----
-
-## 🚀 Развёртывание
-
-### Android (Buildozer)
-```bash
-buildozer android debug
-buildozer android deploy run
-```
-
-### Desktop (Dev)
-```bash
-python main.py
-```
-
-### Зависимости
-```
-kivy==2.3.1
-requests  # Для LLM API
-```
-
----
-
-## 📝 Конвенции Кода
-
-### Именование
-- **Классы**: PascalCase (`QuizScreen`, `CourseStorage`)
-- **Методы**: snake_case (`load_question`, `on_answer_evaluated`)
-- **Приватные методы**: `_method_name` (`_update_rect`, `_save_cache`)
-- **KV ids**: snake_case (`answer_input`, `action_button`)
-
-### Структура методов
-```python
-def method_name(self, arg1, arg2):
-    """
-    Краткое описание метода.
-    
-    Args:
-        arg1: Описание аргумента
-        arg2: Описание аргумента
-        
-    Returns:
-        Описание возвращаемого значения
-    """
-    # Реализация
-```
-
-### Комментарии
-- **Docstrings** для всех классов и публичных методов
-- **Inline комментарии** для сложной логики
-- **Секционные заголовки** с `# ===` для разделения
-
----
-
-## 🎯 Roadmap и TODO
-
-### Потенциальные улучшения
-- [ ] Облачная синхронизация курсов
-- [ ] Статистика прогресса
-- [ ] Графики результатов
-- [ ] Экспорт результатов в PDF
-- [ ] Режим оффлайн (локальные вопросы)
-- [ ] Поддержка изображений в вопросах
-- [ ] Голосовой ввод ответов
-- [ ] Система достижений
-
-### Известные ограничения
-- Зависимость от LLM API (нужен интернет)
-- Нет мультиязычности (только русский)
-- Один пользователь на устройство
-
----
-
-## 📖 Полезные Ссылки
-
-- [Kivy Documentation](https://kivy.org/doc/stable/)
-- [Buildozer Documentation](https://buildozer.readthedocs.io/)
-- [KV Language Guide](https://kivy.org/doc/stable/guide/lang.html)
-
----
-
-## 🤝 Для AI Агентов
-
-При работе с этим проектом:
-
-1. **Всегда проверяйте синтаксис**: `python -m py_compile main.py`
-2. **Тестируйте потоки данных**: Проследите путь от UI → LLM → Storage → UI
-3. **Учитывайте асинхронность**: Threading + Clock.schedule_once для UI обновлений
-4. **Сохраняйте обратную совместимость**: Старые курсы в `courses.json` должны работать
-5. **Документируйте изменения**: Обновляйте комментарии при модификации логики
-6. **Тестируйте на реальных данных**: Генерируйте курс → Проходите тест → Проверяйте отчёт
-
-### Критические зоны
-- **Не ломать кеширование** - это ключевая оптимизация
-- **Не блокировать UI поток** - используйте threading
-- **Не изменять структуру JSON** без миграции
-- **Не удалять привязки (bind)** - они обеспечивают реактивность
-
----
-
-**Версия документа**: 1.0  
-**Дата**: 2026-01-02  
-**Размер кодовой базы**: ~2800 строк (main.py) + llm.py
+**Версия документа**: 1.1 (Roadmap & Vision Update)  
+**Дата**: 2026-01-26  
+**Размер кодовой базы**: ~5850 строк (main.py) + 1400+ (llm.py)

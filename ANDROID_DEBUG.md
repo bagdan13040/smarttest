@@ -17,11 +17,12 @@
 android.permissions = INTERNET,ACCESS_NETWORK_STATE
 ```
 
-### 4. **Библиотека requests на Android**
-- Библиотека `requests` требует дополнительные зависимости на Android
+### 4. Библиотека requests и plyer на Android
+- Библиотека `requests` требует дополнительные зависимости на Android.
+- `plyer` необходим для выбора изображений из галереи.
 - ✅ Убедитесь, что в buildozer.spec указаны все зависимости:
 ```
-requirements = python3,kivy,requests,python-dotenv,urllib3,charset_normalizer,idna,certifi
+requirements = python3,kivy,requests,python-dotenv,urllib3,charset_normalizer,idna,certifi,plyer,pyjnius
 ```
 
 ## Проверка через logcat (Android Debug Bridge)

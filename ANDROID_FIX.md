@@ -66,14 +66,11 @@ adb logcat | grep -E "LLM|python"
 Убедитесь, что в файле [buildozer.spec](buildozer.spec) указано:
 
 ```ini
-# Зависимости для работы с API
-requirements = python3,kivy,requests,python-dotenv,urllib3,charset_normalizer,idna,certifi
+# Зависимости для работы с API и функциями системы
+requirements = python3,kivy,requests,python-dotenv,urllib3,charset_normalizer,idna,certifi,plyer,pyjnius
 
-# Разрешения для интернета
-android.permissions = INTERNET,ACCESS_NETWORK_STATE
-
-# Включение .env файла (опционально, но рекомендуется)
-source.include_patterns = .env
+# Разрешения для интернета и галереи
+android.permissions = INTERNET,ACCESS_NETWORK_STATE,READ_EXTERNAL_STORAGE,READ_MEDIA_IMAGES
 ```
 
 ## Тестирование на эмуляторе
