@@ -1316,7 +1316,6 @@ def generate_open_questions(topic, n=5, difficulty='средний', api_key=Non
             try:
                 questions = json.loads(content)
                 if isinstance(questions, list):
-                    # Применяем санитайзер к вопросам и заметкам
                     for q in questions:
                         if 'question' in q:
                             q['question'] = sanitize_unicode(q['question'])

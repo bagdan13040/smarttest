@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Возможности — Skill Flow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hero-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .mobile-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .mobile-menu.open { max-height: 500px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <!-- Navigation -->
+    <nav class="sticky top-0 bg-white shadow-sm z-50">
+        <div class="container mx-auto px-4 md:px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-2">
+                <div class="w-8 h-8 hero-gradient rounded-lg flex items-center justify-center text-white font-bold text-sm">SF</div>
+                <span class="text-lg md:text-xl font-bold tracking-tight">Skill Flow</span>
+            </a>
+            <div class="hidden md:flex space-x-6 text-sm font-medium">
+                <a href="features.html" class="text-indigo-600 hover:text-indigo-700 transition font-semibold">Возможности</a>
+                <a href="roadmaps.html" class="hover:text-indigo-600 transition">Дорожные карты</a>
+                <a href="personalization.html" class="hover:text-indigo-600 transition">Персонализация</a>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="https://github.com/bagdan13040/smarttest" class="bg-indigo-600 text-white px-4 md:px-5 py-2 rounded-full text-xs md:text-sm font-semibold hover:bg-indigo-700 transition">GitHub</a>
+                <button id="mobile-menu-toggle" class="md:hidden text-2xl text-indigo-600 hover:text-indigo-700">☰</button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="mobile-menu md:hidden bg-white border-t">
+            <div class="container mx-auto px-4 py-3 space-y-2">
+                <a href="features.html" class="block text-sm font-medium text-indigo-600 py-2 border-b font-semibold">Возможности</a>
+                <a href="roadmaps.html" class="block text-sm font-medium hover:text-indigo-600 py-2 border-b">Дорожные карты</a>
+                <a href="personalization.html" class="block text-sm font-medium hover:text-indigo-600 py-2">Персонализация</a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        toggle.addEventListener('click', () => {
+            menu.classList.toggle('open');
+            toggle.textContent = menu.classList.contains('open') ? '✕' : '☰';
+        });
+        document.querySelectorAll('#mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                menu.classList.remove('open');
+                toggle.textContent = '☰';
+            });
+        });
+    </script>
+
+    <!-- Header -->
+    <header class="container mx-auto px-4 md:px-6 py-12 md:py-16 text-center">
+        <h1 class="text-3xl md:text-5xl font-extrabold mb-6">Возможности Skill Flow</h1>
+        <p class="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">Все инструменты, которые вам нужны для эффективного и персонализированного обучения</p>
+    </header>
+
+    <!-- Feature 1: LLM Generation -->
+    <section id="llm" class="container mx-auto px-4 md:px-6 py-12 md:py-16 border-t">
+        <div class="flex flex-col md:flex-row gap-8 md:gap-12 items-center">
+            <div class="md:w-1/2">
+                <div class="inline-block px-3 py-1 rounded-full bg-indigo-100 text-indigo-600 text-xs md:text-sm font-bold mb-4">AI GENERATION</div>
+                <h2 class="text-2xl md:text-4xl font-bold mb-6">Генерация контента с помощью LLM</h2>
+                <p class="text-gray-600 text-sm md:text-base mb-4">Skill Flow использует передовые языковые модели для создания качественного образовательного контента. Система может сгенерировать полный курс по любой теме за считанные секунды.</p>
+                <ul class="space-y-4 text-sm md:text-base">
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">📚</span>
+                        <div>
+                            <strong>Теория:</strong> Подробное объяснение темы объемом 800-1000 слов с примерами и аналогиями
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">❓</span>
+                        <div>
+                            <strong>Вопросы:</strong> 10 вопросов с множественным выбором для проверки базовых знаний
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">✍️</span>
+                        <div>
+                            <strong>Открытые вопросы:</strong> 5 контрольных вопросов для глубокой проверки понимания
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">🎯</span>
+                        <div>
+                            <strong>Примеры:</strong> Практические примеры и задачи, адаптированные под ваш уровень
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="md:w-1/2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl p-8 text-center">
+                <div class="text-6xl mb-4">🤖</div>
+                <p class="text-gray-700 font-semibold">Система анализирует ваш запрос и создает контент за 30-60 секунд</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Feature 2: Adaptive Difficulty -->
+    <section id="adaptive" class="container mx-auto px-4 md:px-6 py-12 md:py-16 border-t">
+        <div class="flex flex-col md:flex-row-reverse gap-8 md:gap-12 items-center">
+            <div class="md:w-1/2">
+                <div class="inline-block px-3 py-1 rounded-full bg-green-100 text-green-600 text-xs md:text-sm font-bold mb-4">ИНТЕЛЛЕКТУАЛЬНОЕ ОБУЧЕНИЕ</div>
+                <h2 class="text-2xl md:text-4xl font-bold mb-6">Адаптивная сложность</h2>
+                <p class="text-gray-600 text-sm md:text-base mb-4">Система отслеживает ваш прогресс и автоматически подстраивает сложность материала, чтобы вы всегда находились в зоне оптимального развития.</p>
+                <ul class="space-y-4 text-sm md:text-base">
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">📊</span>
+                        <div>
+                            <strong>Анализ результатов:</strong> Каждый ответ анализируется и учитывается в вашем профиле
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">⬆️</span>
+                        <div>
+                            <strong>Динамическая сложность:</strong> При 80%+ правильных ответов сложность увеличивается
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">⬇️</span>
+                        <div>
+                            <strong>Поддержка при трудностях:</strong> При затруднениях система предлагает повторение базовых концепций
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">📈</span>
+                        <div>
+                            <strong>Прогресс:</strong> Визуальное отображение вашего роста и достижений
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="md:w-1/2 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl p-8 text-center">
+                <div class="text-6xl mb-4">📈</div>
+                <p class="text-gray-700 font-semibold">Идеальный баланс между вызовом и достижимостью</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Feature 3: Open Answer Evaluation -->
+    <section id="open-answers" class="container mx-auto px-4 md:px-6 py-12 md:py-16 border-t">
+        <div class="flex flex-col md:flex-row gap-8 md:gap-12 items-center">
+            <div class="md:w-1/2">
+                <div class="inline-block px-3 py-1 rounded-full bg-purple-100 text-purple-600 text-xs md:text-sm font-bold mb-4">AI ОЦЕНКА</div>
+                <h2 class="text-2xl md:text-4xl font-bold mb-6">Интеллектуальная проверка открытых ответов</h2>
+                <p class="text-gray-600 text-sm md:text-base mb-4">ИИ не просто ищет ключевые слова, а понимает смысл вашего ответа и дает глубокий, полезный фидбек для улучшения.</p>
+                <ul class="space-y-4 text-sm md:text-base">
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">🧠</span>
+                        <div>
+                            <strong>Анализ смысла:</strong> AI понимает контекст и смысл вашего ответа, а не только слова
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">⭐</span>
+                        <div>
+                            <strong>Оценка 0-10:</strong> Справедливая оценка, учитывающая правильность и полноту ответа
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">💬</span>
+                        <div>
+                            <strong>Подробный фидбек:</strong> Объяснение, где вы ошиблись и как улучшить ответ
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">🎓</span>
+                        <div>
+                            <strong>Образовательная ценность:</strong> Каждый фидбек помогает лучше понять тему
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="md:w-1/2 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl p-8 text-center">
+                <div class="text-6xl mb-4">✍️</div>
+                <p class="text-gray-700 font-semibold">Напишите что угодно, AI поймет и оценит справедливо</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Compare with Traditional -->
+    <section class="bg-indigo-50 py-16 md:py-24 my-12 md:my-16">
+        <div class="container mx-auto px-4 md:px-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-12">Skill Flow vs Традиционное обучение</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-xl shadow-sm">
+                    <h3 class="text-xl font-bold text-red-600 mb-6">❌ Традиционное</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 font-bold">✗</span>
+                            <span>Одинаковая сложность для всех</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 font-bold">✗</span>
+                            <span>Фиксированный темп обучения</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 font-bold">✗</span>
+                            <span>Ждать проверки учителя</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 font-bold">✗</span>
+                            <span>Одинаковые примеры для всех</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 font-bold">✗</span>
+                            <span>Скука и перегруз</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-sm border-2 border-indigo-600">
+                    <h3 class="text-xl font-bold text-indigo-600 mb-6">✅ Skill Flow</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 font-bold">✓</span>
+                            <span>Персонализированная сложность</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 font-bold">✓</span>
+                            <span>Ваш личный темп обучения</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 font-bold">✓</span>
+                            <span>Мгновенная проверка 24/7</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 font-bold">✓</span>
+                            <span>Примеры под ваши интересы</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 font-bold">✓</span>
+                            <span>Оптимальный вызов</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="container mx-auto px-4 md:px-6 py-16 md:py-24 text-center">
+        <h2 class="text-2xl md:text-3xl font-bold mb-6">Готовы начать обучение?</h2>
+        <button class="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-indigo-700 shadow-lg transition transform hover:-translate-y-1">Скачать Skill Flow</button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-10 md:py-12 border-t border-gray-800">
+        <div class="container mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-center md:text-left">
+                <p class="text-sm md:text-base">&copy; 2026 Skill Flow AI Learning. Все права соблюдены.</p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-6 text-sm">
+                <a href="index.html" class="hover:text-white transition">На главную</a>
+                <a href="#" class="hover:text-white transition">Политика конфиденциальности</a>
+                <a href="https://github.com/bagdan13040/smarttest" class="hover:text-white transition">GitHub</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,5 +1,5 @@
 """
-SmartTest - Приложение для интеллектуального тестирования с AI
+Skillflow - Приложение для интеллектуального тестирования с AI
 Автоматическая генерация теории, тестов и открытых вопросов на основе LLM.
 
 Основные функции:
@@ -554,14 +554,18 @@ KV = """
 #:import dp kivy.metrics.dp
 #:import Window kivy.core.window.Window
 
-#:set color_bg (0.95, 0.94, 0.92, 1)
+#:set color_bg (0.96, 0.97, 0.99, 1)
 #:set color_card (1, 1, 1, 1)
-#:set color_primary (0.15, 0.55, 0.9, 1)
+#:set color_primary (0.56, 0.74, 0.9, 1)
+#:set color_primary_dark (0.06, 0.45, 0.8, 1)
+#:set color_accent (0.87, 0.91, 0.97, 1)
 #:set color_success_bg (0.82, 0.98, 0.87, 1)
 #:set color_success (0.01, 0.6, 0.33, 1)
-#:set color_orange (0.86, 0.41, 0.01, 1)
-#:set color_text_gray (0.4, 0.44, 0.52, 1)
-#:set color_text_dark (0.1, 0.1, 0.1, 1)
+#:set color_orange (1, 0.5, 0.1, 1)
+#:set color_tip_bg (1, 0.96, 0.9, 1)
+#:set color_tip_text (0.65, 0.48, 0.32, 1)
+#:set color_text_gray (0.39, 0.43, 0.45, 1)
+#:set color_text_dark (0.18, 0.2, 0.21, 1)
 
 <Card@BoxLayout>:
     canvas.before:
@@ -572,7 +576,103 @@ KV = """
             size: self.size
             radius: [dp(20)]
 
-# Главный менеджер экранов - переключает между основными экранами приложения
+# Кастомный хедер
+<SmartHeader@BoxLayout>:
+    size_hint_y: None
+    height: dp(60)
+    padding: [dp(16), 0]
+    canvas.before:
+        Color:
+            rgba: color_bg
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    
+    BoxLayout:
+        orientation: 'horizontal'
+        spacing: dp(8)
+        size_hint_x: None
+        width: self.minimum_width
+        pos_hint: {'center_y': 0.5}
+        
+        MDIcon:
+            icon: 'brain'
+            font_size: '32sp'
+            theme_text_color: 'Custom'
+            text_color: color_primary_dark
+            size_hint: None, None
+            size: dp(32), dp(32)
+        
+        Label:
+            text: 'SmartTest'
+            font_size: '22sp'
+            bold: True
+            color: color_text_dark
+            size_hint_x: None
+            width: self.texture_size[0]
+    
+    Widget:
+    
+    # Streak indicator
+    BoxLayout:
+        size_hint: None, None
+        size: dp(60), dp(32)
+        pos_hint: {'center_y': 0.5}
+        padding: [dp(8), dp(4)]
+        spacing: dp(4)
+        canvas.before:
+            Color:
+                rgba: 0.93, 0.94, 0.96, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(16)]
+        
+        MDIcon:
+            icon: 'fire'
+            font_size: '18sp'
+            theme_text_color: 'Custom'
+            text_color: color_orange
+        
+        Label:
+            text: str(app.gamification.streak)
+            font_size: '14sp'
+            bold: True
+            color: color_text_dark
+
+# Обновленная кнопка навигации
+<IconToggleButton>:
+    background_normal: ''
+    background_down: ''
+    background_color: 0, 0, 0, 0
+    orientation: 'vertical'
+    spacing: dp(4)
+    icon_center_y: icon_widget.center_y if icon_widget else 0
+    canvas.before:
+        Color:
+            rgba: color_accent if self.state == 'down' else (0, 0, 0, 0)
+        RoundedRectangle:
+            pos: self.center_x - dp(32), self.icon_center_y - dp(16)
+            size: dp(64), dp(32)
+            radius: [dp(16)]
+    
+    MDIcon:
+        id: icon_widget
+        icon: root.icon_source
+        font_size: '24sp'
+        theme_text_color: 'Custom'
+        text_color: color_text_dark if root.state == 'down' else color_text_gray
+        pos_hint: {'center_x': 0.5}
+    
+    Label:
+        text: root.text
+        font_size: '12sp'
+        bold: True if root.state == 'down' else False
+        color: color_text_dark if root.state == 'down' else color_text_gray
+        size_hint_y: None
+        height: dp(14)
+
+# Главный менеджер экранов
 ScreenManager:
     MainScreen:
     LoadingScreen:
@@ -608,7 +708,7 @@ ScreenManager:
             points: [self.x + self.width * 0.2, self.y + self.height - 2, self.x + self.width * 0.8, self.y + self.height - 2]
             width: 2 if self.state == 'down' else 0.001
 
-# MainScreen - Главный экран приложения с тремя табами
+# MainScreen - Главный экран приложения с табами
 <MainScreen>:
     name: 'main'
     canvas.before:
@@ -619,308 +719,367 @@ ScreenManager:
             size: self.size
     BoxLayout:
         orientation: 'vertical'
-        size_hint: (1, 1)
-        padding: [0, dp(30), 0, 0]  # Отступ сверху для статус-бара Android
         
-        # Хедер с логотипом и статусом сети
-        BoxLayout:
-            size_hint_y: None
-            height: dp(30)
-            padding: [dp(16), 0]
-            
-            Label:
-                text: 'SmartTest'
-                font_size: '18sp'
-                bold: True
-                color: 0.15, 0.55, 0.9, 1  # Основной синий цвет
-                halign: 'left'
-                text_size: self.size
-                valign: 'middle'
-            
-            Widget:
-
-        # Менеджер табов - переключает между сохраненными, поиском, настройками
+        # Менеджер табов
         ScreenManager:
             id: tab_manager
-            size_hint: (1, 1)
-            SavedScreen:
-                name: 'saved'
             SearchScreen:
                 name: 'search'
+            SavedScreen:
+                name: 'saved'
             ChatScreen:
                 name: 'chat'
             SettingsScreen:
                 name: 'settings'
                 
-        # Нижняя навигация - фиксированная панель с кнопками табов
+        # Нижняя навигация
         BoxLayout:
             size_hint_y: None
             height: dp(64)
-            padding: [dp(12), dp(8), dp(12), dp(8)]
-            spacing: dp(20)  # Уменьшили для 4 кнопок
             canvas.before:
                 Color:
-                    rgba: 0, 0, 0, 0
+                    rgba: 1, 1, 1, 1
                 Rectangle:
                     pos: self.pos
                     size: self.size
                 Color:
-                    rgba: 0.92, 0.92, 0.92, 1
+                    rgba: 0.9, 0.9, 0.9, 1
                 Line:
-                    points: [self.x, self.y + self.height, self.x + self.width, self.y + self.height]
+                    points: [self.x, self.top, self.right, self.top]
                     width: 1
 
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
-                IconToggleButton:
-                    id: nav_saved
-                    size: dp(34), dp(34)
-                    icon_source: 'home'
-                    target_screen: 'saved'
-                    group: 'main_nav'
+            IconToggleButton:
+                id: nav_search
+                icon_source: 'compass-outline' if self.state == 'normal' else 'compass'
+                text: 'Поиск'
+                target_screen: 'search'
+                group: 'main_nav'
+                state: 'down'
+                on_release: tab_manager.current = self.target_screen
 
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
-                IconToggleButton:
-                    id: nav_search
-                    size: dp(34), dp(34)
-                    icon_source: 'magnify'
-                    target_screen: 'search'
-                    group: 'main_nav'
+            IconToggleButton:
+                id: nav_saved
+                icon_source: 'school-outline' if self.state == 'normal' else 'school'
+                text: 'Моё обучение'
+                target_screen: 'saved'
+                group: 'main_nav'
+                on_release: tab_manager.current = self.target_screen
 
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
-                IconToggleButton:
-                    id: nav_chat
-                    size: dp(34), dp(34)
-                    icon_source: 'chat'
-                    target_screen: 'chat'
-                    group: 'main_nav'
+            IconToggleButton:
+                id: nav_chat
+                icon_source: 'chat-processing-outline' if self.state == 'normal' else 'chat-processing'
+                text: 'AI Чат'
+                target_screen: 'chat'
+                group: 'main_nav'
+                on_release: tab_manager.current = self.target_screen
 
-            AnchorLayout:
-                anchor_x: 'center'
-                anchor_y: 'center'
-                IconToggleButton:
-                    id: nav_settings
-                    size: dp(34), dp(34)
-                    icon_source: 'cog'
-                    target_screen: 'settings'
-                    group: 'main_nav'
+            IconToggleButton:
+                id: nav_settings
+                icon_source: 'cog-outline' if self.state == 'normal' else 'cog'
+                text: 'Настройки'
+                target_screen: 'settings'
+                group: 'main_nav'
+                on_release: tab_manager.current = self.target_screen
 
 <SavedScreen>:
-    name: 'saved'
-    on_enter: app.update_profile_stats()
-    ScrollView:
-        do_scroll_x: False
-        BoxLayout:
-            orientation: 'vertical'
-            padding: [dp(16), dp(16)]
-            spacing: dp(10)
-            size_hint_y: None
-            height: self.minimum_height
-            
-            # Профиль пользователя
-            BoxLayout:
-                orientation: 'horizontal'
-                spacing: dp(12)
-                size_hint_y: None
-                height: dp(70)
-                
-                # Аватар
-                FloatLayout:
-                    size_hint: None, None
-                    size: dp(56), dp(56)
-                    canvas.before:
-                        Color:
-                            rgba: 0.15, 0.55, 0.9, 1
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(12)]
-                    Label:
-                        text: app.gamification.username[0].upper() if app.gamification.username else 'С'
-                        font_size: '28sp'
-                        bold: True
-                        color: 1, 1, 1, 1
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                
-                BoxLayout:
-                    orientation: 'vertical'
-                    spacing: dp(2)
-                    Label:
-                        id: profile_name
-                        text: app.gamification.username
-                        color: 0.1, 0.1, 0.1, 1
-                        font_size: '20sp'
-                        bold: True
-                        halign: 'left'
-                        valign: 'bottom'
-                        text_size: self.size
-                        size_hint_y: 0.5
-                    Label:
-                        id: profile_level
-                        text: str(app.gamification.level) + ' УРОВЕНЬ ОБУЧЕНИЯ'
-                        color: 0.5, 0.5, 0.5, 1
-                        font_size: '12sp'
-                        halign: 'left'
-                        valign: 'top'
-                        text_size: self.size
-                        size_hint_y: 0.5
-            
-            # Статистика
-            GridLayout:
-                cols: 2
-                spacing: dp(12)
-                size_hint_y: None
-                height: dp(100)
-                
-                # Общий XP
-                BoxLayout:
-                    orientation: 'vertical'
-                    padding: dp(12)
-                    spacing: dp(4)
-                    canvas.before:
-                        Color:
-                            rgba: 1, 1, 1, 1
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(12)]
-                    MDIcon:
-                        icon: 'star'
-                        font_size: '24sp'
-                        theme_text_color: 'Custom'
-                        text_color: 0.15, 0.55, 0.9, 1
-                        size_hint_y: None
-                        height: dp(30)
-                        halign: 'center'
-                    Label:
-                        id: total_xp
-                        text: str(app.gamification.xp)
-                        color: 0.1, 0.1, 0.1, 1
-                        font_size: '24sp'
-                        bold: True
-                        size_hint_y: None
-                        height: dp(30)
-                        halign: 'center'
-                    Label:
-                        text: 'ОБЩИЙ XP'
-                        color: 0.6, 0.6, 0.6, 1
-                        font_size: '11sp'
-                        size_hint_y: None
-                        height: dp(20)
-                        halign: 'center'
-                
-                # Streak
-                BoxLayout:
-                    orientation: 'vertical'
-                    padding: dp(12)
-                    spacing: dp(4)
-                    canvas.before:
-                        Color:
-                            rgba: 1, 1, 1, 1
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(12)]
-                    MDIcon:
-                        icon: 'fire'
-                        font_size: '24sp'
-                        theme_text_color: 'Custom'
-                        text_color: 0.98, 0.4, 0.2, 1
-                        size_hint_y: None
-                        height: dp(30)
-                        halign: 'center'
-                    Label:
-                        id: streak_days
-                        text: str(app.gamification.streak) + ' дн.'
-                        color: 0.1, 0.1, 0.1, 1
-                        font_size: '24sp'
-                        bold: True
-                        size_hint_y: None
-                        height: dp(30)
-                        halign: 'center'
-                    Label:
-                        text: 'УДАРНЫЙ РЕЖИМ'
-                        color: 0.6, 0.6, 0.6, 1
-                        font_size: '11sp'
-                        size_hint_y: None
-                        height: dp(20)
-                        halign: 'center'
-            
-            # Прогресс до следующего уровня
+    BoxLayout:
+        orientation: 'vertical'
+        SmartHeader:
+        
+        ScrollView:
+            do_scroll_x: False
             BoxLayout:
                 orientation: 'vertical'
-                spacing: dp(8)
+                padding: [dp(20), dp(10), dp(20), dp(20)]
+                spacing: dp(24)
                 size_hint_y: None
-                height: dp(50)
-                padding: [dp(0), dp(4)]
+                height: self.minimum_height
                 
+                # Profile Section
                 BoxLayout:
+                    size_hint_y: None
+                    height: dp(80)
+                    spacing: dp(16)
+                    
+                    # Avatar
+                    Label:
+                        text: 'C'
+                        font_size: '32sp'
+                        bold: True
+                        color: color_text_dark
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_y': 0.5}
+                        canvas.before:
+                            Color:
+                                rgba: color_accent
+                            Ellipse:
+                                pos: self.pos
+                                size: self.size
+                    
+                    BoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: dp(64)
+                        pos_hint: {'center_y': 0.5}
+                        spacing: dp(2)
+                        
+                        Label:
+                            text: 'Студент'
+                            font_size: '22sp'
+                            bold: True
+                            color: color_text_dark
+                            halign: 'left'
+                            text_size: self.size
+                        
+                        Label:
+                            text: 'СТУДЕНТ SMARTTEST'
+                            font_size: '12sp'
+                            color: color_text_gray
+                            halign: 'left'
+                            text_size: self.size
+
+                # Progress Card
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: dp(140)
+                    padding: dp(20)
+                    spacing: dp(12)
+                    canvas.before:
+                        Color:
+                            rgba: 0.94, 0.95, 0.97, 1
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(24)]
+                    
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(20)
+                        Label:
+                            text: 'УРОВЕНЬ ' + str(app.gamification.level)
+                            font_size: '12sp'
+                            bold: True
+                            color: color_text_gray
+                            halign: 'left'
+                            text_size: self.size
+                    
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(32)
+                        Label:
+                            text: str(app.gamification.xp) + ' XP всего'
+                            font_size: '22sp'
+                            bold: True
+                            color: color_text_dark
+                            halign: 'left'
+                            text_size: self.size
+                        
+                        Label:
+                            text: str(int(app.gamification.get_level_progress())) + '%'
+                            font_size: '14sp'
+                            bold: True
+                            color: color_primary_dark
+                            halign: 'right'
+                            text_size: self.size
+                            size_hint_x: None
+                            width: dp(40)
+
+                    MDProgressBar:
+                        value: app.gamification.get_level_progress()
+                        max: 100
+                        size_hint_y: None
+                        height: dp(8)
+                        color: color_primary_dark
+                        background_color: 0.85, 0.88, 0.92, 1
+
+                # Section "МОЁ ОБУЧЕНИЕ"
+                Label:
+                    text: 'МОЁ ОБУЧЕНИЕ'
+                    font_size: '12sp'
+                    bold: True
+                    color: color_text_gray
+                    halign: 'left'
                     size_hint_y: None
                     height: dp(20)
-                    Label:
-                        text: 'ПРОГРЕСС ДО ' + str(app.gamification.level + 1) + ' УРОВНЯ'
-                        color: 0.6, 0.6, 0.6, 1
-                        font_size: '11sp'
-                        halign: 'left'
-                        valign: 'middle'
-                        text_size: self.size
-                    Label:
-                        id: level_progress_percent
-                        text: str(app.gamification.get_level_progress()) + '%'
-                        color: 0.15, 0.55, 0.9, 1
-                        font_size: '13sp'
-                        bold: True
-                        halign: 'right'
-                        valign: 'middle'
-                        text_size: self.size
-                        size_hint_x: None
-                        width: dp(50)
-                
-                MDProgressBar:
-                    id: level_progress_bar
+                    text_size: self.width, None
+
+                # Main Cards Grid
+                GridLayout:
+                    cols: 2
+                    spacing: dp(16)
                     size_hint_y: None
-                    height: dp(12)
-                    value: 0
-                    max: 100
-                    color: 0.15, 0.55, 0.9, 1
-                    background_color: 0.9, 0.9, 0.9, 1
-            
-            Widget:
-                size_hint_y: None
-                height: dp(24)
-                
-            # Вертикальные кнопки управления
-            BoxLayout:
-                orientation: 'vertical'
-                spacing: dp(18)
-                size_hint_y: None
-                height: dp(190)
-                padding: [dp(8), 0]
-                
-                RoundedButton:
-                    text: 'МОИ ПРОГРАММЫ\\n[size=14sp][color=#ffffffcc]Курсы обучения в процессе[/color][/size]'
-                    font_size: '18sp'
-                    bold: True
-                    markup: True
-                    bg_color: 0.15, 0.55, 0.9, 1
-                    on_release: app.root.current = 'roadmaps_list'
+                    height: dp(140)
                     
-                RoundedButton:
-                    text: 'ПРОЙДЕННЫЕ УРОКИ\\n[size=14sp][color=#ffffffcc]История одиночных занятий[/color][/size]'
-                    font_size: '18sp'
+                    # Programs Card
+                    ButtonBehaviorBoxLayout:
+                        orientation: 'vertical'
+                        padding: dp(16)
+                        spacing: dp(4)
+                        on_release: app.root.current = 'roadmaps_list'
+                        canvas.before:
+                            Color:
+                                rgba: 0.94, 0.95, 0.97, 1
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(24)]
+                        
+                        MDIcon:
+                            icon: 'layers-triple'
+                            font_size: '32sp'
+                            theme_text_color: 'Custom'
+                            text_color: color_primary_dark
+                            size_hint: None, None
+                            size: dp(48), dp(48)
+                            pos_hint: {'center_x': 0.5}
+                            canvas.before:
+                                Color:
+                                    rgba: color_accent
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [dp(12)]
+                        
+                        Label:
+                            text: 'Программы'
+                            font_size: '16sp'
+                            bold: True
+                            color: color_text_dark
+                            halign: 'center'
+                        
+                        Label:
+                            text: str(len(app.roadmap_storage.roadmaps)) + ' сохранено'
+                            font_size: '12sp'
+                            color: color_text_gray
+                            halign: 'center'
+
+                    # Courses Card
+                    ButtonBehaviorBoxLayout:
+                        orientation: 'vertical'
+                        padding: dp(16)
+                        spacing: dp(4)
+                        on_release: app.root.current = 'lessons_list'
+                        canvas.before:
+                            Color:
+                                rgba: 0.94, 0.95, 0.97, 1
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(24)]
+                        
+                        MDIcon:
+                            icon: 'school'
+                            font_size: '32sp'
+                            theme_text_color: 'Custom'
+                            text_color: color_text_gray
+                            size_hint: None, None
+                            size: dp(48), dp(48)
+                            pos_hint: {'center_x': 0.5}
+                            canvas.before:
+                                Color:
+                                    rgba: 0.88, 0.89, 0.91, 1
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [dp(12)]
+                        
+                        Label:
+                            text: 'Курсы'
+                            font_size: '16sp'
+                            bold: True
+                            color: color_text_dark
+                            halign: 'center'
+                        
+                        Label:
+                            text: str(len(app.storage.courses)) + ' сохранено'
+                            font_size: '12sp'
+                            color: color_text_gray
+                            halign: 'center'
+
+                # Secondary Stats Grid
+                GridLayout:
+                    cols: 1
+                    spacing: dp(12)
+                    size_hint_y: None
+                    height: dp(130)
+                    
+                    BoxLayout:
+                        spacing: dp(16)
+                        
+                        # Streak Card
+                        BoxLayout:
+                            orientation: 'vertical'
+                            padding: dp(16)
+                            spacing: dp(4)
+                            canvas.before:
+                                Color:
+                                    rgba: 1, 0.96, 0.9, 1 # Very light orange
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [dp(24)]
+                            
+                            MDIcon:
+                                icon: 'fire'
+                                font_size: '32sp'
+                                theme_text_color: 'Custom'
+                                text_color: color_orange
+                                pos_hint: {'center_x': 0.5}
+                            
+                            Label:
+                                text: str(app.gamification.streak)
+                                font_size: '36sp'
+                                bold: True
+                                color: color_text_dark
+                            
+                            Label:
+                                text: 'Ударный темп'
+                                font_size: '14sp'
+                                color: color_orange
+
+                        # Stages Passed Card
+                        BoxLayout:
+                            orientation: 'vertical'
+                            padding: dp(16)
+                            spacing: dp(4)
+                            canvas.before:
+                                Color:
+                                    rgba: 0.92, 0.94, 1, 1 # Very light blue
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [dp(24)]
+                            
+                            MDIcon:
+                                icon: 'check-all'
+                                font_size: '32sp'
+                                theme_text_color: 'Custom'
+                                text_color: color_primary_dark
+                                pos_hint: {'center_x': 0.5}
+                            
+                            Label:
+                                text: '0' # TODO: bind to stats
+                                font_size: '36sp'
+                                bold: True
+                                color: color_text_dark
+                            
+                            Label:
+                                text: 'Курсов пройдено'
+                                font_size: '14sp'
+                                color: color_primary_dark
+
+                Label:
+                    text: 'SMARTTEST PRO V2.1'
+                    font_size: '12sp'
                     bold: True
-                    markup: True
-                    bg_color: 0.2, 0.45, 0.75, 1
-                    on_release: app.root.current = 'lessons_list'
-            
-            Widget:
-                size_hint_y: None
-                height: dp(20)
+                    color: 0.8, 0.8, 0.8, 1
+                    halign: 'center'
+                    size_hint_y: None
+                    height: dp(40)
+
+<ButtonBehaviorBoxLayout@ButtonBehavior+BoxLayout>:
 
 <RoadmapsListScreen>:
     name: 'roadmaps_list'
@@ -929,7 +1088,7 @@ ScreenManager:
         orientation: 'vertical'
         canvas.before:
             Color:
-                rgba: 0.95, 0.93, 0.90, 1
+                rgba: color_bg
             Rectangle:
                 pos: self.pos
                 size: self.size
@@ -941,7 +1100,7 @@ ScreenManager:
             padding: [dp(16), dp(8)]
             canvas.before:
                 Color:
-                    rgba: 0.15, 0.55, 0.9, 1
+                    rgba: color_bg
                 Rectangle:
                     pos: self.pos
                     size: self.size
@@ -949,12 +1108,12 @@ ScreenManager:
             MDIconButton:
                 icon: 'arrow-left'
                 theme_text_color: 'Custom'
-                text_color: 1, 1, 1, 1
+                text_color: color_text_dark
                 on_release: app.root.current = 'main'
             
             Label:
                 text: 'Список программ'
-                color: 1, 1, 1, 1
+                color: color_text_dark
                 font_size: '20sp'
                 bold: True
                 halign: 'left'
@@ -967,8 +1126,8 @@ ScreenManager:
                 orientation: 'vertical'
                 size_hint_y: None
                 height: self.minimum_height
-                padding: [dp(16), dp(16)]
-                spacing: dp(12)
+                padding: [dp(20), dp(10)]
+                spacing: dp(16)
 
 <LessonsListScreen>:
     name: 'lessons_list'
@@ -977,7 +1136,7 @@ ScreenManager:
         orientation: 'vertical'
         canvas.before:
             Color:
-                rgba: 0.95, 0.93, 0.90, 1
+                rgba: color_bg
             Rectangle:
                 pos: self.pos
                 size: self.size
@@ -989,7 +1148,7 @@ ScreenManager:
             padding: [dp(16), dp(8)]
             canvas.before:
                 Color:
-                    rgba: 0.2, 0.45, 0.75, 1
+                    rgba: color_bg
                 Rectangle:
                     pos: self.pos
                     size: self.size
@@ -997,12 +1156,12 @@ ScreenManager:
             MDIconButton:
                 icon: 'arrow-left'
                 theme_text_color: 'Custom'
-                text_color: 1, 1, 1, 1
+                text_color: color_text_dark
                 on_release: app.root.current = 'main'
             
             Label:
                 text: 'История уроков'
-                color: 1, 1, 1, 1
+                color: color_text_dark
                 font_size: '20sp'
                 bold: True
                 halign: 'left'
@@ -1015,171 +1174,186 @@ ScreenManager:
                 orientation: 'vertical'
                 size_hint_y: None
                 height: self.minimum_height
-                padding: [dp(16), dp(16)]
-                spacing: dp(12)
+                padding: [dp(20), dp(10)]
+                spacing: dp(16)
 
 <SearchScreen>:
-    ScrollView:
-        do_scroll_x: False
-        BoxLayout:
-            orientation: 'vertical'
-            padding: [dp(12), dp(8), dp(12), dp(8)]
-            spacing: dp(8)
-            size_hint_y: None
-            height: self.minimum_height
-
+    BoxLayout:
+        orientation: 'vertical'
+        SmartHeader:
+        
+        ScrollView:
+            do_scroll_x: False
             BoxLayout:
-                padding: [dp(16), dp(16), dp(16), dp(20)]
-                spacing: dp(12)
-                canvas.before:
-                    Color:
-                        rgba: (0.95, 0.93, 0.90, 1)
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [dp(20)]
                 orientation: 'vertical'
+                padding: [dp(20), dp(10), dp(20), dp(20)]
+                spacing: dp(16)
                 size_hint_y: None
-                height: self.minimum_height + dp(20)
+                height: self.minimum_height
                 
                 Label:
-                    text: 'Добро пожаловать! Введите тему:'
-                    color: 0.15, 0.55, 0.9, 1
-                    font_size: '18sp'
+                    text: 'Новое обучение'
+                    color: color_text_dark
+                    font_size: '28sp'
                     bold: True
-                    halign: 'center'
-                    size_hint_y: None
-                    height: dp(30)
-
-                TextInput:
-                    id: topic_input
-                    hint_text: 'Например: Python программирование'
-                    multiline: False
-                    size_hint_y: None
-                    height: dp(50)
-                    font_size: '16sp'
-                    padding: [dp(12), dp(14)]
-                    background_normal: ''
-                    background_active: ''
-                    foreground_color: 0.1, 0.1, 0.1, 1
-                    cursor_color: 0.15, 0.55, 0.9, 1
-                    canvas:
-                        Color:
-                            rgba: 1, 1, 1, 1
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(12)]
-                
-                Widget:
-                    size_hint_y: None
-                    height: dp(12)
-                
-                # Переключатель режима
-                BoxLayout:
-                    size_hint_y: None
-                    height: dp(50)
-                    orientation: 'horizontal'
-                    spacing: dp(12)
-                    padding: [dp(12), 0]
-                    canvas.before:
-                        Color:
-                            rgba: (0.15, 0.55, 0.9, 0.05)
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(12)]
-                    
-                    Label:
-                        text: 'Программа обучения'
-                        color: 0.2, 0.2, 0.2, 1
-                        font_size: '16sp'
-                        size_hint_x: 1
-                        halign: 'left'
-                        valign: 'middle'
-                        text_size: self.size
-
-                    # Инфо-кнопка
-                    Button:
-                        text: 'i'
-                        size_hint: None, None
-                        size: dp(26), dp(26)
-                        pos_hint: {'center_y': 0.5}
-                        background_normal: ''
-                        background_color: 0, 0, 0, 0
-                        color: 0.15, 0.55, 0.9, 1
-                        font_size: '14sp'
-                        bold: True
-                        canvas.before:
-                            Color:
-                                rgba: 0.15, 0.55, 0.9, 0.1
-                            Ellipse:
-                                pos: self.pos
-                                size: self.size
-                            Color:
-                                rgba: 0.15, 0.55, 0.9, 0.4
-                            Line:
-                                circle: (self.center_x, self.center_y, self.width/2 - dp(1))
-                                width: dp(1)
-                        on_release: app.show_mode_info()
-
-                    RoundSwitch:
-                        id: mode_switch
-                        active: app.learning_mode == 'roadmap'
-                        size_hint: None, None
-                        size: dp(54), dp(30)
-                        pos_hint: {'center_y': 0.5}
-                        on_active: app.set_learning_mode('roadmap' if self.active else 'single')
-                
-                Widget:
-                    size_hint_y: None
-                    height: dp(8)
-
-                Label:
-                    text: 'Сложность:'
-                    color: 0.5, 0.5, 0.5, 1
-                    font_size: '13sp'
                     halign: 'left'
                     size_hint_y: None
-                    height: dp(20)
+                    height: dp(40)
                     text_size: self.width, None
-
-                BoxLayout:
+                
+                Label:
+                    text: 'Выберите тему и ИИ составит персональный план'
+                    color: color_text_gray
+                    font_size: '16sp'
+                    halign: 'left'
                     size_hint_y: None
                     height: dp(40)
+                    text_size: self.width, None
+
+                # Input container
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(80)
+                    padding: [0, dp(10)]
+                    TextInput:
+                        id: topic_input
+                        hint_text: 'Тема обучения'
+                        hint_text_color: 0.6, 0.6, 0.6, 1
+                        multiline: False
+                        font_size: '18sp'
+                        foreground_color: 0, 0, 0, 1
+                        padding: [dp(16), dp(18)]
+                        background_normal: ''
+                        background_active: ''
+                        canvas.before:
+                            Color:
+                                rgba: 0.9, 0.9, 0.9, 1
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(12)]
+                                width: 1.2
+
+                # Segmented Toggle
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(54)
+                    padding: [dp(4), dp(4)]
+                    canvas.before:
+                        Color:
+                            rgba: 0.93, 0.94, 0.96, 1
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(27)]
+                    
+                    ToggleButton:
+                        text: 'Один урок'
+                        group: 'mode'
+                        state: 'down' if app.learning_mode == 'single' else 'normal'
+                        background_normal: ''
+                        background_down: ''
+                        background_color: 0, 0, 0, 0
+                        color: color_text_dark if self.state == 'down' else color_text_gray
+                        bold: True if self.state == 'down' else False
+                        on_release: app.set_learning_mode('single')
+                        canvas.before:
+                            Color:
+                                rgba: (1, 1, 1, 1) if self.state == 'down' else (0, 0, 0, 0)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(23)]
+                    
+                    ToggleButton:
+                        text: 'Roadmap'
+                        group: 'mode'
+                        state: 'down' if app.learning_mode == 'roadmap' else 'normal'
+                        background_normal: ''
+                        background_down: ''
+                        background_color: 0, 0, 0, 0
+                        color: color_text_dark if self.state == 'down' else color_text_gray
+                        bold: True if self.state == 'down' else False
+                        on_release: app.set_learning_mode('roadmap')
+                        canvas.before:
+                            Color:
+                                rgba: (1, 1, 1, 1) if self.state == 'down' else (0, 0, 0, 0)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(23)]
+
+                BoxLayout:
+                    orientation: 'vertical'
                     spacing: dp(8)
-                    DifficultyButton:
-                        text: 'Легкий'
-                        state: 'down'
-                        group: 'difficulty'
-                        on_release: app.set_difficulty('легкий')
-                    DifficultyButton:
-                        text: 'Средний'
-                        group: 'difficulty'
-                        on_release: app.set_difficulty('средний')
-                    DifficultyButton:
-                        text: 'Эксперт'
-                        group: 'difficulty'
-                        on_release: app.set_difficulty('эксперт')
+                    size_hint_y: None
+                    height: self.minimum_height
+                    
+                    Label:
+                        text: 'СЛОЖНОСТЬ'
+                        color: color_text_gray
+                        font_size: '12sp'
+                        bold: True
+                        halign: 'left'
+                        size_hint_y: None
+                        height: dp(20)
+                        text_size: self.width, None
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(48)
+                        spacing: dp(10)
+                        
+                        DifficultyButton:
+                            text: 'Новичок'
+                            state: 'down' if app.difficulty == 'легкий' else 'normal'
+                            on_release: app.set_difficulty('легкий')
+                        DifficultyButton:
+                            text: 'Средний'
+                            state: 'down' if app.difficulty == 'средний' else 'normal'
+                            on_release: app.set_difficulty('средний')
+                        DifficultyButton:
+                            text: 'Эксперт'
+                            state: 'down' if app.difficulty == 'эксперт' else 'normal'
+                            on_release: app.set_difficulty('эксперт')
 
                 Widget:
                     size_hint_y: None
-                    height: dp(12)
+                    height: dp(10)
 
                 RoundedButton:
-                    id: start_button
-                    text: 'СОЗДАТЬ ПРОГРАММУ' if mode_switch.active else 'НАЧАТЬ УРОК'
+                    text: 'Сгенерировать обучение'
                     font_size: '18sp'
                     bold: True
-                    bg_color: (0.3, 0.7, 0.3, 1) if mode_switch.active else (0.15, 0.55, 0.9, 1)
-                    size_hint: None, None
-                    size: dp(280), dp(56)
-                    pos_hint: {'center_x': 0.5}
-                    on_release: app.start_learning()
+                    bg_color: color_primary_dark if topic_input.text else color_primary
+                    size_hint_y: None
+                    height: dp(64)
+                    radius: [dp(32)]
+                    on_release: if topic_input.text: app.start_learning()
 
-            Widget:
-                size_hint_y: None
-                height: dp(20)
+                # AI Tip Box
+                BoxLayout:
+                    orientation: 'vertical'
+                    padding: dp(20)
+                    spacing: dp(8)
+                    size_hint_y: None
+                    height: self.minimum_height
+                    canvas.before:
+                        Color:
+                            rgba: color_tip_bg
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(24)]
+                    
+                    Label:
+                        text: '[b]AI Совет:[/b] Используйте конкретные темы для более точных вопросов. Например, "Основы React Hooks" вместо просто "React".'
+                        markup: True
+                        color: color_tip_text
+                        font_size: '14sp'
+                        halign: 'center'
+                        valign: 'middle'
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
 
 <SettingsScreen>:
     on_enter: app.load_settings_ui()
@@ -1226,7 +1400,7 @@ ScreenManager:
                 padding: [dp(14), dp(14)]
                 background_normal: ''
                 background_active: ''
-                foreground_color: 0.1, 0.1, 0.1, 1
+                foreground_color: 0, 0, 0, 1
                 cursor_color: 0.15, 0.55, 0.9, 1
                 canvas:
                     Color:
@@ -1916,93 +2090,111 @@ ScreenManager:
             height: dp(10)
 
 <ChatScreen>:
-    name: 'chat'
     BoxLayout:
         orientation: 'vertical'
-        padding: [0, 0, 0, dp(10)]
+        SmartHeader:
         
-        # Header
-        BoxLayout:
-            size_hint_y: None
-            height: dp(50)
-            padding: [dp(10), 0]
-            canvas.before:
-                Color:
-                    rgba: 1, 1, 1, 1
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-            
-            Label:
-                text: 'AI Чат (Vision)'
-                color: 0.15, 0.55, 0.9, 1
-                font_size: '18sp'
-                bold: True
-                halign: 'center'
-                valign: 'middle'
-                text_size: self.size
-
-        # Chat History
-        ScrollView:
-            id: chat_scroll
+        FloatLayout:
+            # Centered robot when empty
             BoxLayout:
-                id: chat_list
                 orientation: 'vertical'
-                size_hint_y: None
-                height: self.minimum_height
-                padding: [dp(10), dp(10)]
-                spacing: dp(10)
+                size_hint: None, None
+                size: dp(300), dp(300)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.6}
+                spacing: dp(16)
+                opacity: 1 if not chat_list.children else 0
+                
+                MDIcon:
+                    icon: 'robot-outline'
+                    font_size: '80sp'
+                    theme_text_color: 'Custom'
+                    text_color: color_accent
+                    pos_hint: {'center_x': 0.5}
+                    canvas.before:
+                        Color:
+                            rgba: 0.94, 0.95, 0.97, 1
+                        Ellipse:
+                            pos: self.center_x - dp(60), self.center_y - dp(60)
+                            size: dp(120), dp(120)
+                
+                Label:
+                    text: 'AI Ассистент Pro'
+                    font_size: '22sp'
+                    bold: True
+                    color: color_text_dark
+                    halign: 'center'
+                
+                Label:
+                    text: 'Спрашивайте о чем угодно. Я использую Google Search для проверки фактов.'
+                    font_size: '14sp'
+                    color: color_text_gray
+                    halign: 'center'
+                    text_size: self.width - dp(40), None
 
-        # Input Area: attach button, separate rounded input field, send button
+            ScrollView:
+                id: chat_scroll
+                BoxLayout:
+                    id: chat_list
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: [dp(20), dp(20)]
+                    spacing: dp(16)
+
+        # Input Area
         BoxLayout:
             size_hint_y: None
-            height: dp(60)
-            padding: [dp(10), dp(8)]
-            spacing: dp(10)
-
-            BoxLayout:
-                id: input_container
-                size_hint_x: 1
-                size_hint_y: None
-                height: dp(44)
+            height: dp(80)
+            padding: [dp(16), dp(10), dp(16), dp(16)]
+            spacing: dp(12)
+            
+            MDIconButton:
+                icon: 'camera-outline'
+                theme_text_color: 'Custom'
+                text_color: color_text_gray
+                size_hint: None, None
+                size: dp(48), dp(48)
                 pos_hint: {'center_y': 0.5}
-                padding: [dp(8), 0]
+                on_release: root.open_camera()
                 canvas.before:
-                    # Background for input field (rounded)
                     Color:
-                        rgba: 0.95, 0.95, 0.95, 1
+                        rgba: 0.94, 0.95, 0.97, 1
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [dp(12), dp(12), dp(12), dp(12)]
-                    # Outline (border) around the rounded input field
-                    Color:
-                        rgba: 0.78, 0.78, 0.78, 1
-                    Line:
-                        rounded_rectangle: [self.x, self.y, self.width, self.height, dp(12)]
-                        width: 1
+                        radius: [dp(12)]
 
-                TextInput:
-                    id: message_input
-                    hint_text: 'Сообщение...'
-                    multiline: False
-                    size_hint_x: 1
-                    size_hint_y: 1
-                    background_normal: ''
-                    background_active: ''
-                    background_color: 0, 0, 0, 0
-                    padding: [dp(6), dp(10)]
-                    foreground_color: 0, 0, 0, 1
-
-            IconButton:
-                id: send_btn
-                size_hint: None, None
-                size: dp(32), dp(32)
+            TextInput:
+                id: message_input
+                hint_text: 'Спросите AI...'
+                multiline: False
+                font_size: '16sp'
+                padding: [dp(16), dp(14)]
+                background_normal: ''
+                background_active: ''
                 pos_hint: {'center_y': 0.5}
-                default_source: 'send'
-                pressed_source: 'send'
+                canvas.before:
+                    Color:
+                        rgba: 0.94, 0.95, 0.97, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(24)]
+            
+            MDIconButton:
+                icon: 'send'
+                theme_text_color: 'Custom'
+                text_color: 1, 1, 1, 1
+                size_hint: None, None
+                size: dp(48), dp(48)
+                pos_hint: {'center_y': 0.5}
                 on_release: root.send_message()
-                # No background fill: icon-only button
+                canvas.before:
+                    Color:
+                        rgba: color_primary
+                    Ellipse:
+                        pos: self.pos
+                        size: self.size
 
 <FinalScreen>:
     name: 'final'
@@ -2907,86 +3099,24 @@ class GamificationSystem:
             self.icon = self.default_source
 
 
-class IconToggleButton(ButtonBehavior, MDIcon):
+class IconToggleButton(ToggleButtonBehavior, BoxLayout):
     """
-    Кнопка-иконка с поддержкой переключения (toggle).
-    
-    Используется в нижней навигации для переключения между табами.
-    Меняет цвет при активации.
-    
-    Атрибуты:
-        icon_source: Имя иконки
-        target_screen: Имя целевого экрана для переключения
-        active_color: Цвет иконки в активном состоянии (синий)
-        inactive_color: Цвет иконки в неактивном состоянии (серый)
+    Кнопка навигации с иконкой и текстом.
     """
     icon_source = StringProperty('')
+    text = StringProperty('')
     target_screen = StringProperty('')
-    active_color = ListProperty([0.15, 0.55, 0.9, 1])
-    inactive_color = ListProperty([0.5, 0.5, 0.5, 1])
-    active = BooleanProperty(False)
+    icon_center_y = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.theme_text_color = "Custom"
-        self.text_color = self.inactive_color
-        self.halign = "center"
-        self.valign = "middle"
-        self.font_size = "28sp"
-        self.bind(active=self._update_style)
+        self.orientation = 'vertical'
+        self.spacing = dp(4)
+        self.allow_no_selection = False
 
-    def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos):
-            self.text_color = (self.text_color[0] * 0.7, self.text_color[1] * 0.7, 
-                               self.text_color[2] * 0.7, 0.9)
-            # Восстанавливаем цвет через 100ms (быстрый импульс)
-            Clock.schedule_once(lambda dt: self._update_style(self, self.active), 0.1)
-        return super().on_touch_down(touch)
-
-    def on_touch_up(self, touch):
-        return super().on_touch_up(touch)
-
-    def on_icon_source(self, instance, value):
-        """Устанавливает иконку"""
-        if value:
-            self.icon = value
-
-    def _update_style(self, instance, value):
-        """Меняет цвет иконки в зависимости от active"""
-        if value:
-            self.text_color = self.active_color  # Синий когда активна
-        else:
-            self.text_color = self.inactive_color  # Серый когда неактивна
-
-    def on_release(self):
-        """Переключает выделение при нажатии. Повторный клик НЕ снимает выделение."""
-        app = App.get_running_app()
-        try:
-            main_screen = app.root.get_screen('main')
-        except Exception:
-            main_screen = None
-
-        # Если уже активен — ничего не делаем (оставляем выделение)
-        if self.active:
-            return
-
-        # Снимаем выделение с других кнопок
-        if main_screen:
-            for btn_id in ('nav_saved', 'nav_search', 'nav_chat', 'nav_settings'):
-                try:
-                    btn = main_screen.ids.get(btn_id)
-                    if btn and btn is not self and hasattr(btn, 'active'):
-                        btn.active = False
-                except Exception:
-                    pass
-
-        # Активируем себя и переключаем экран
-        self.active = True
-        if self.target_screen and main_screen:
-            try:
-                main_screen.ids.tab_manager.current = self.target_screen
-            except Exception:
-                pass
+class SmartHeader(BoxLayout):
+    """Кастомный заголовок приложения с геймификацией"""
+    pass
 
 
 class SectionDivider(Widget):
@@ -3011,33 +3141,35 @@ class SectionDivider(Widget):
 
 
 class DifficultyButton(ToggleButton):
-    bg_color = ListProperty([0.9, 0.9, 0.9, 1])
-    selected_color = ListProperty([0.15, 0.55, 0.9, 1])
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.background_normal = ''
         self.background_down = ''
         self.background_color = (0, 0, 0, 0)
-        self.color = (0.2, 0.2, 0.2, 1)
         self.group = 'difficulty'
+        self.bold = True
         with self.canvas.before:
-            self._rect_color = Color(rgba=self.bg_color)
-            self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(10)])
-        self.bind(pos=self._update_rect, size=self._update_rect)
-        self.bind(state=self._update_state)
+            self.bg_color_instr = Color()
+            self.border_color_instr = Color()
+            self.rect_instr = RoundedRectangle(radius=[dp(12)])
+            self.line_instr = Line(width=dp(1.2))
+        
+        self.bind(pos=self._update_graphics, size=self._update_graphics, state=self._update_graphics)
+        self._update_graphics()
 
-    def _update_rect(self, *args):
-        self._rect.pos = self.pos
-        self._rect.size = self.size
-
-    def _update_state(self, *args):
+    def _update_graphics(self, *args):
         if self.state == 'down':
-            self._rect_color.rgba = self.selected_color
-            self.color = (1, 1, 1, 1)
+            self.bg_color_instr.rgba = (0.06, 0.45, 0.8, 1) # color_primary_dark
+            self.border_color_instr.rgba = (0.06, 0.45, 0.8, 1)
+            self.color = (1, 1, 1, 1) # White text
         else:
-            self._rect_color.rgba = self.bg_color
-            self.color = (0.2, 0.2, 0.2, 1)
+            self.bg_color_instr.rgba = (0.82, 0.82, 0.82, 1) # Light Gray
+            self.border_color_instr.rgba = (0.82, 0.82, 0.82, 1)
+            self.color = (0.4, 0.4, 0.4, 1) # Dark Gray text
+        
+        self.rect_instr.pos = self.pos
+        self.rect_instr.size = self.size
+        self.line_instr.rounded_rectangle = (self.x, self.y, self.width, self.height, dp(12))
 
 
 class OptionButton(Button):
@@ -4231,85 +4363,100 @@ class ChatScreen(Screen):
         else:
             self.add_message(response['content'], "assistant")
 
-    def add_message(self, text, role):
-        """Add a text-only message to the chat history and render it.
+    def open_camera(self):
+        """Заглушка для камеры."""
+        print("[Chat] Камера пока не реализована")
 
-        The app no longer supports image attachments; this function
-        renders only the text part of messages.
-        """
+    def _is_emoji(self, cp):
+        """Проверка кода символа на принадлежность к Emoji"""
+        return (
+            0x1F600 <= cp <= 0x1F64F or
+            0x1F300 <= cp <= 0x1F5FF or
+            0x1F680 <= cp <= 0x1F6FF or
+            0x1F1E6 <= cp <= 0x1F1FF or
+            0x2600 <= cp <= 0x26FF or
+            0x2700 <= cp <= 0x27BF or
+            0x1F900 <= cp <= 0x1F9FF or
+            0xFE00 <= cp <= 0xFE0F
+        )
+
+    def add_message(self, text, role):
+        """Добавляет сообщение в чат с современными бабблами."""
         self.chat_history.append({'role': role, 'text': text})
 
+        is_user = role == 'user'
+        
         # Контейнер для сообщения
-        msg_box = BoxLayout(orientation='vertical', size_hint_y=None, padding=[10, 10], spacing=5)
-
-        # Фон сообщения (визуальное выделение)
-        with msg_box.canvas.before:
-            Color(*((0.8, 0.9, 1, 1) if role == 'user' else (1, 1, 1, 1)))
-            RoundedRectangle(pos=msg_box.pos, size=msg_box.size, radius=[10])
-
-        # Обновление фона при изменении размера/позиции
-        def update_rect(instance, value):
-            # children layout may vary between Kivy versions; try-safe update
-            try:
-                instance.canvas.before.children[2].pos = instance.pos
-                instance.canvas.before.children[2].size = instance.size
-            except Exception:
-                pass
-
-        msg_box.bind(pos=update_rect, size=update_rect)
-
-        # Создаём метку с текстом сообщения
-        label_kwargs = {'text': text or '', 'size_hint_y': None, 'color': (0, 0, 0, 1), 'markup': True}
-
-        # Decide whether to use emoji font for this specific message.
-        # If the text contains Cyrillic characters, prefer the default font
-        # to ensure Russian renders correctly. Use emoji font only when
-        # message contains emoji and no Cyrillic.
-        def _is_emoji(cp):
-            return (
-                0x1F600 <= cp <= 0x1F64F or
-                0x1F300 <= cp <= 0x1F5FF or
-                0x1F680 <= cp <= 0x1F6FF or
-                0x1F1E6 <= cp <= 0x1F1FF or
-                0x2600 <= cp <= 0x26FF or
-                0x2700 <= cp <= 0x27BF or
-                0x1F900 <= cp <= 0x1F9FF or
-                0xFE00 <= cp <= 0xFE0F
-            )
-
-        txt = text or ''
+        msg_wrapper = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            padding=[dp(16), dp(8)],
+            spacing=dp(10)
+        )
+        
+        if is_user:
+            msg_wrapper.add_widget(Widget()) # Сдвигаем вправо
+            
+        bubble = BoxLayout(
+            orientation='vertical',
+            size_hint=(None, None),
+            padding=[dp(16), dp(12)],
+            width=Window.width * 0.75,
+        )
+        
+        # Шрифт и замена эмодзи для Windows
+        txt = str(text) or ''
         has_cyr = any(0x0400 <= ord(ch) <= 0x04FF for ch in txt)
-        has_emoji = any(_is_emoji(ord(ch)) for ch in txt)
+        has_emoji = any(self._is_emoji(ord(ch)) for ch in txt)
+        
+        font_name = None
         if EMOJI_FONT_PATH and has_emoji and not has_cyr:
-            label_kwargs['font_name'] = EMOJI_FONT_PATH
+            font_name = EMOJI_FONT_PATH
 
-        lbl = Label(**label_kwargs)
-        lbl.bind(width=lambda *x: setattr(lbl, 'text_size', (lbl.width, None)))
-
-        # Когда текст прорендерится, пересчитаем высоту контейнера
-        def update_height(instance, value):
-            h = dp(20)
-            for child in msg_box.children:
-                h += child.height + msg_box.spacing
-            msg_box.height = h
-
-        lbl.bind(texture_size=lambda *x: setattr(lbl, 'height', lbl.texture_size[1]))
-        lbl.bind(texture_size=update_height)
-
-        msg_box.add_widget(lbl)
-
-        # Обертка для выравнивания
-        wrapper = AnchorLayout(anchor_x='right' if role == 'user' else 'left', size_hint_y=None)
-        wrapper.add_widget(msg_box)
-
-        # Связываем высоту обертки с высотой сообщения
-        msg_box.bind(height=lambda *x: setattr(wrapper, 'height', msg_box.height))
-
-        self.ids.chat_list.add_widget(wrapper)
+        label = Label(
+            text=txt,
+            color=(0.18, 0.2, 0.21, 1) if not is_user else (1, 1, 1, 1),
+            font_size='15sp',
+            halign='left',
+            valign='top',
+            markup=True,
+            font_name=font_name if font_name else 'Roboto'
+        )
+        label.bind(width=lambda s, w: setattr(s, 'text_size', (w, None)))
+        
+        def update_heights(instance, texture_size):
+            if texture_size[1] > 0:
+                bubble.height = texture_size[1] + dp(24)
+                msg_wrapper.height = bubble.height + dp(16)
+        
+        label.bind(texture_size=update_heights)
+        bubble.add_widget(label)
+        
+        bg_color = (0.06, 0.45, 0.8, 1) if is_user else (0.94, 0.95, 0.97, 1)
+        radius = [dp(20), dp(20), dp(4), dp(20)] if is_user else [dp(20), dp(20), dp(20), dp(4)]
+        
+        with bubble.canvas.before:
+            bubble.bg_color_instr = Color(rgba=bg_color)
+            bubble.rect_instr = RoundedRectangle(pos=bubble.pos, size=bubble.size, radius=radius)
+        
+        def update_bubble_graphics(inst, value):
+            inst.rect_instr.pos = inst.pos
+            inst.rect_instr.size = inst.size
+                
+        bubble.bind(pos=update_bubble_graphics, size=update_bubble_graphics)
+        
+        msg_wrapper.add_widget(bubble)
+        if not is_user:
+            msg_wrapper.add_widget(Widget()) # Сдвигаем влево
+            
+        self.ids.chat_list.add_widget(msg_wrapper)
+        
+        # Скролл вниз
+        Clock.schedule_once(lambda dt: setattr(self.ids.chat_scroll, 'scroll_y', 0), 0.1)
 
 class MyApp(MDApp):
     """
-    Главный класс приложения SmartTest.
+    Главный класс приложения Skillflow.
     
     Управляет всей логикой приложения:
     - Инициализация хранилищ данных (курсы, настройки, кеш)
@@ -5622,22 +5769,11 @@ class MyApp(MDApp):
 
     def update_profile_stats(self):
         """Обновляет статистику профиля на главном экране"""
-        main_screen = self.root.get_screen('main')
-        saved_screen = main_screen.ids.tab_manager.get_screen('saved')
-        
-        try:
-            saved_screen.ids.profile_name.text = self.gamification.username
-            saved_screen.ids.profile_level.text = f"{self.gamification.level} УРОВЕНЬ ОБУЧЕНИЯ"
-            saved_screen.ids.total_xp.text = str(self.gamification.xp)
-            saved_screen.ids.streak_days.text = f"{self.gamification.streak} дн."
-            
-            # Обновляем прогресс-бар и текст процента
-            progress = self.gamification.get_level_progress()
-            saved_screen.ids.level_progress_percent.text = f"{progress}%"
-            if hasattr(saved_screen.ids, 'level_progress_bar'):
-                saved_screen.ids.level_progress_bar.value = progress
-        except Exception as e:
-            self.log(f"Error updating profile UI: {e}")
+        # Since we use direct bindings in KV to app.gamification, 
+        # we just need to trigger a UI refresh if necessary.
+        # However, for 100% reliability with regular objects, 
+        # we can manually refresh the screens.
+        pass
 
     def load_roadmaps_list(self):
         """Загружает список всех программ обучения на отдельный экран"""

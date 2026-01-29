@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дорожные карты — Skill Flow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hero-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .mobile-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .mobile-menu.open { max-height: 500px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <!-- Navigation -->
+    <nav class="sticky top-0 bg-white shadow-sm z-50">
+        <div class="container mx-auto px-4 md:px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-2">
+                <div class="w-8 h-8 hero-gradient rounded-lg flex items-center justify-center text-white font-bold text-sm">SF</div>
+                <span class="text-lg md:text-xl font-bold tracking-tight">Skill Flow</span>
+            </a>
+            <div class="hidden md:flex space-x-6 text-sm font-medium">
+                <a href="features.html" class="hover:text-indigo-600 transition">Возможности</a>
+                <a href="roadmaps.html" class="text-indigo-600 hover:text-indigo-700 transition font-semibold">Дорожные карты</a>
+                <a href="personalization.html" class="hover:text-indigo-600 transition">Персонализация</a>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="https://github.com/bagdan13040/smarttest" class="bg-indigo-600 text-white px-4 md:px-5 py-2 rounded-full text-xs md:text-sm font-semibold hover:bg-indigo-700 transition">GitHub</a>
+                <button id="mobile-menu-toggle" class="md:hidden text-2xl text-indigo-600 hover:text-indigo-700">☰</button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="mobile-menu md:hidden bg-white border-t">
+            <div class="container mx-auto px-4 py-3 space-y-2">
+                <a href="features.html" class="block text-sm font-medium hover:text-indigo-600 py-2 border-b">Возможности</a>
+                <a href="roadmaps.html" class="block text-sm font-medium text-indigo-600 py-2 border-b font-semibold">Дорожные карты</a>
+                <a href="personalization.html" class="block text-sm font-medium hover:text-indigo-600 py-2">Персонализация</a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        toggle.addEventListener('click', () => {
+            menu.classList.toggle('open');
+            toggle.textContent = menu.classList.contains('open') ? '✕' : '☰';
+        });
+        document.querySelectorAll('#mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                menu.classList.remove('open');
+                toggle.textContent = '☰';
+            });
+        });
+    </script>
+
+    <!-- Header -->
+    <header class="container mx-auto px-4 md:px-6 py-12 md:py-16 text-center">
+        <h1 class="text-3xl md:text-5xl font-extrabold mb-6">Дорожные карты обучения</h1>
+        <p class="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">Не знаете с чего начать? AI построит полный план обучения, учитывая ваши цели и текущий уровень</p>
+    </header>
+
+    <!-- What is Roadmap -->
+    <section class="container mx-auto px-4 md:px-6 py-12 md:py-16 border-t">
+        <h2 class="text-2xl md:text-4xl font-bold mb-8">Что такое дорожная карта?</h2>
+        <div class="grid md:grid-cols-2 gap-8">
+            <div>
+                <p class="text-gray-600 text-sm md:text-base mb-6">Дорожная карта (Roadmap) — это структурированный план обучения, разбитый на модули с четкой последовательностью. Каждый модуль содержит:</p>
+                <ul class="space-y-4 text-sm md:text-base">
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">📖</span>
+                        <div>
+                            <strong>Теория:</strong> Подробное объяснение основных концепций
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">🧪</span>
+                        <div>
+                            <strong>Практика:</strong> Вопросы и задачи для закрепления знаний
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">🔗</span>
+                        <div>
+                            <strong>Зависимости:</strong> Четкая последовательность (что изучать перед этим)
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-2xl">📊</span>
+                        <div>
+                            <strong>Прогресс:</strong> Отслеживание завершенных и открытых модулей
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="bg-gradient-to-br from-indigo-100 to-blue-100 rounded-2xl p-8 flex items-center justify-center">
+                <div class="text-center">
+                    <div class="text-6xl mb-4">🗺️</div>
+                    <p class="text-gray-700 font-semibold">Ваш персональный путь к мастерству</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Example Roadmap -->
+    <section class="container mx-auto px-4 md:px-6 py-12 md:py-16 border-t">
+        <h2 class="text-2xl md:text-4xl font-bold mb-8">Пример: Обучение Python</h2>
+        <p class="text-gray-600 text-sm md:text-base mb-8">Вот как выглядит типичная дорожная карта обучения программированию:</p>
+        <div class="space-y-4">
+            <div class="p-6 rounded-xl bg-green-50 border-2 border-green-500">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-lg">1. Основы Python</h3>
+                    <span class="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-bold">✓ ГОТОВО</span>
+                </div>
+                <p class="text-gray-600 text-sm">Синтаксис, переменные, типы данных, операторы</p>
+            </div>
+            <div class="p-6 rounded-xl bg-blue-50 border-2 border-blue-500">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-lg">2. Условные операторы и циклы</h3>
+                    <span class="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-bold">► В ПРОЦЕССЕ</span>
+                </div>
+                <p class="text-gray-600 text-sm">If/else, while, for, break, continue</p>
+                <p class="text-xs text-gray-500 mt-2">Требует: Основы Python ✓</p>
+            </div>
+            <div class="p-6 rounded-xl bg-gray-100 border-2 border-gray-400 opacity-60">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-lg">3. Функции и модули</h3>
+                    <span class="bg-gray-400 text-white px-4 py-1 rounded-full text-sm font-bold">🔒 ЗАБЛОКИРОВАНО</span>
+                </div>
+                <p class="text-gray-600 text-sm">Определение функций, параметры, возвращаемые значения</p>
+                <p class="text-xs text-gray-500 mt-2">Требует: Условные операторы и циклы</p>
+            </div>
+            <div class="p-6 rounded-xl bg-gray-100 border-2 border-gray-400 opacity-60">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-lg">4. ООП и Классы</h3>
+                    <span class="bg-gray-400 text-white px-4 py-1 rounded-full text-sm font-bold">🔒 ЗАБЛОКИРОВАНО</span>
+                </div>
+                <p class="text-gray-600 text-sm">Классы, объекты, наследование, полиморфизм</p>
+                <p class="text-xs text-gray-500 mt-2">Требует: Функции и модули</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits -->
+    <section class="bg-indigo-600 text-white py-16 md:py-24">
+        <div class="container mx-auto px-4 md:px-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-12">Преимущества использования дорожных карт</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white/10 p-8 rounded-xl backdrop-blur-sm border border-white/20">
+                    <h3 class="text-xl font-bold mb-4">📍 Четкое направление</h3>
+                    <p class="text-white/90">Вы всегда знаете, что учить дальше. Нет необходимости самостоятельно планировать курс обучения.</p>
+                </div>
+                <div class="bg-white/10 p-8 rounded-xl backdrop-blur-sm border border-white/20">
+                    <h3 class="text-xl font-bold mb-4">🏗️ Прочная база</h3>
+                    <p class="text-white/90">Каждый новый модуль опирается на предыдущие знания, что гарантирует глубокое понимание.</p>
+                </div>
+                <div class="bg-white/10 p-8 rounded-xl backdrop-blur-sm border border-white/20">
+                    <h3 class="text-xl font-bold mb-4">⏱️ Экономия времени</h3>
+                    <p class="text-white/90">AI уже продумал оптимальный порядок изучения. Вы можете просто следовать плану.</p>
+                </div>
+                <div class="bg-white/10 p-8 rounded-xl backdrop-blur-sm border border-white/20">
+                    <h3 class="text-xl font-bold mb-4">🎯 Достижение целей</h3>
+                    <p class="text-white/90">Карта построена на основе ваших целей, поэтому каждый модуль приближает вас к результату.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="container mx-auto px-4 md:px-6 py-12 md:py-16 border-t">
+        <h2 class="text-2xl md:text-4xl font-bold mb-12 text-center">Как это работает?</h2>
+        <div class="grid md:grid-cols-4 gap-6">
+            <div class="text-center">
+                <div class="bg-indigo-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 text-2xl">1️⃣</div>
+                <h3 class="font-bold mb-2">Введите тему</h3>
+                <p class="text-gray-600 text-sm">Скажите, что вы хотите изучить</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-indigo-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 text-2xl">2️⃣</div>
+                <h3 class="font-bold mb-2">AI генерирует карту</h3>
+                <p class="text-gray-600 text-sm">Система создает структурированный план (5-8 модулей)</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-indigo-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 text-2xl">3️⃣</div>
+                <h3 class="font-bold mb-2">Учитесь модуль за модулем</h3>
+                <p class="text-gray-600 text-sm">Проходите уроки в рекомендуемом порядке</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-indigo-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 text-2xl">4️⃣</div>
+                <h3 class="font-bold mb-2">Отслеживайте прогресс</h3>
+                <p class="text-gray-600 text-sm">Видьте свой прогресс и достижения</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="container mx-auto px-4 md:px-6 py-16 md:py-24 text-center">
+        <h2 class="text-2xl md:text-3xl font-bold mb-6">Создайте вашу первую дорожную карту</h2>
+        <button class="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-indigo-700 shadow-lg transition transform hover:-translate-y-1">Начать обучение</button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-10 md:py-12 border-t border-gray-800">
+        <div class="container mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-center md:text-left">
+                <p class="text-sm md:text-base">&copy; 2026 Skill Flow AI Learning. Все права соблюдены.</p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-6 text-sm">
+                <a href="index.html" class="hover:text-white transition">На главную</a>
+                <a href="#" class="hover:text-white transition">Политика конфиденциальности</a>
+                <a href="https://github.com/bagdan13040/smarttest" class="hover:text-white transition">GitHub</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
