@@ -1,0 +1,3 @@
+env:
+  OKEY:${{secrets.OPENROUTER_KEY}}
+run: python main.py 
