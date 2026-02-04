@@ -329,7 +329,7 @@ def generate_learning_roadmap(topic, goal=None, level="начинающий", ap
 Никаких описаний, только списки."""
 
     data = {
-        "model": "xiaomi/mimo-v2-flash:free",
+        "model": "arcee-ai/trinity-large-preview:free",
         "messages": [
             {
                 "role": "system", 
@@ -440,7 +440,7 @@ def generate_next_topics(prev_material, n=5, api_key=None, memory_file='course_t
         "Материал:\n" + material_snippet
     )
     data = {
-        "model": "xiaomi/mimo-v2-flash:free",
+        "model": "arcee-ai/trinity-large-preview:free",
         "messages": [
             {"role": "system", "content": "Ты — API, возвращающий только сырой JSON массив строк (тем)."},
             {"role": "user", "content": prompt}
@@ -927,7 +927,7 @@ def encode_image_to_base64(image_path):
         log(f"Error encoding image: {e}")
         return None
 
-def chat_with_image(message, image_path=None, history=None, api_key=None, model="google/gemini-2.0-flash-exp:free"):
+def chat_with_image(message, image_path=None, history=None, api_key=None, model="arcee-ai/trinity-large-preview:free"):
     """
     Отправляет сообщение и опциональное изображение в чат с AI.
     
@@ -993,8 +993,8 @@ def chat_with_image(message, image_path=None, history=None, api_key=None, model=
     
     # Список запасных моделей с поддержкой изображений
     fallback_models = [
+        "arcee-ai/trinity-large-preview:free",
         "google/gemini-2.0-flash-exp:free",
-        "arcee-ai/trinity-mini:free",
         "qwen/qwen-2-vl-7b-instruct:free",
         "meta-llama/llama-3.2-11b-vision-instruct:free"
     ]
@@ -1164,7 +1164,7 @@ def generate_quiz(topic, difficulty="средний", api_key=None, interests=No
     )
     
     data = {
-        "model": "xiaomi/mimo-v2-flash:free",
+        "model": "arcee-ai/trinity-large-preview:free",
         "messages": [
             {
                 "role": "system",
@@ -1301,7 +1301,7 @@ def generate_open_questions(topic, n=5, difficulty='средний', api_key=Non
     )
 
     data = {
-        "model": "xiaomi/mimo-v2-flash:free",
+        "model": "arcee-ai/trinity-large-preview:free",
         "messages": [
             {"role": "system", "content": "Ты — API, возвращающий только сырой JSON массив."},
             {"role": "user", "content": prompt}
@@ -1369,10 +1369,10 @@ def evaluate_answer(question_text, user_answer, notes="", api_key=None):
     )
 
     data = {
-        "model": "xiaomi/mimo-v2-flash:free",
+        "model": "arcee-ai/trinity-large-preview:free",
         "messages": [
             {
-                "role": "system", 
+                "role": "system",
                 "content": (
                     "Ты — лояльный и поддерживающий преподаватель. "
                     "Твоя задача — поощрять знания, а не многословие. "
